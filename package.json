@@ -1,0 +1,30 @@
+{
+  "name": "smartCopy",
+  "author": "Microsoft Corporation",
+  "version": "0.0.1",
+  "description": "Tool for copying files for deployment, will only copy changed files and delete files that doesn't exists in the destination but only if they were part of the previous deployment.",
+  "tags" : ["azure", "deployment"],
+  "keywords": [ "node", "azure", "deployment" ],
+  "main": "./bin/smartCopy.js",
+  "engines": { "node": ">= 0.6.15" },
+  "scripts": {
+    "install": "tsc --module node --out bin/smartCopy.js lib/main.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/projectkudu/SmartCopy.git"
+  },
+  "homepage": "http://github.com/projectkudu/SmartCopy",
+  "bugs" : {
+    "url" : "http://github.com/projectkudu/SmartCopy/issues"
+  },
+  "bin": {
+    "smartCopy": "./bin/smartCopy"
+  },
+  "licenses": [ { "type": "Apache", "url": "http://www.apache.org/licenses/LICENSE-2.0" } ],
+  "readmeFilename": "README.markdown",
+  "dependencies": {
+    "typescript": "~0.8.0"
+  }
+}
