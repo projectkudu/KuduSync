@@ -11,7 +11,7 @@ function smartCopy(fromPath: string, toPath: string, previousManifestPath: strin
 
     var currentManifest = new Manifest();
 
-    smartCopyDirectory(from, to, from.getPath(), to.getPath(), Manifest.load(previousManifestPath), currentManifest);
+    smartCopyDirectory(from, to, from.path(), to.path(), Manifest.load(previousManifestPath), currentManifest);
 
     Manifest.save(currentManifest, currentManifestPath);
 }
@@ -20,31 +20,31 @@ function simpleCopy(fromFile: FileInfo, toFilePath: string) {
     Ensure.argNotNull(fromFile, "fromFile");
     Ensure.argNotNull(toFilePath, "toFilePath");
 
-    fs.createReadStream(fromFile.getPath()).pipe(fs.createWriteStream(toFilePath));
+    fs.createReadStream(fromFile.path()).pipe(fs.createWriteStream(toFilePath));
 }
 
 function deleteFile(file: FileInfo) {
     Ensure.argNotNull(file, "file");
 
-    fs.unlinkSync(file.getPath());
+    fs.unlinkSync(file.path());
 }
 
 function deleteDirectoryRecursive(directory: DirectoryInfo) {
     Ensure.argNotNull(directory, "directory");
 
-    var files = directory.getFiles();
+    var files = directory.files();
     for (var fileKey in files) {
         var file = files[fileKey];
         deleteFile(file);
     }
 
-    var subDirectories = directory.getSubDirectories();
+    var subDirectories = directory.subDirectories();
     for (var subDirectoryKey in subDirectories) {
         var subDirectory = subDirectories[subDirectoryKey];
         deleteDirectoryRecursive(subDirectory);
     }
 
-    fs.rmdirSync(directory.getPath());
+    fs.rmdirSync(directory.path());
 }
 
 function smartCopyDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath: string, toRootPath: string, manifest: Manifest, outManifest: Manifest) {
@@ -63,8 +63,8 @@ function smartCopyDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath
 
     to.ensureCreated();
 
-    var fromFiles = from.getFiles();
-    var toFiles = to.getFiles();
+    var fromFiles = from.files();
+    var toFiles = to.files();
 
     // If the file doesn't exist in the source, only delete if:
     // 1. We have no previous directory
@@ -92,12 +92,12 @@ function smartCopyDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath
         var toFile = toFiles[fromFile.getName()];
 
         if (toFile == null || fromFile.getModifiedTime() > toFile.getModifiedTime()) {
-            simpleCopy(fromFile, pathUtil.join(to.getPath(), fromFile.getName()));
+            simpleCopy(fromFile, pathUtil.join(to.path(), fromFile.getName()));
         }
     }
 
-    var fromSubDirectories = from.getSubDirectories();
-    var toSubDirectories = to.getSubDirectories();
+    var fromSubDirectories = from.subDirectories();
+    var toSubDirectories = to.subDirectories();
 
     // If the file doesn't exist in the source, only delete if:
     // 1. We have no previous directory
@@ -118,7 +118,7 @@ function smartCopyDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath
         var fromSubDirectory = fromSubDirectories[fromSubDirectoryKey];
         outManifest.addFileToManifest(fromSubDirectory.getPath(), fromRootPath);
 
-        var toSubDirectory = new DirectoryInfo(pathUtil.join(to.getPath(), fromSubDirectory.getName()));
+        var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.getName()));
         smartCopyDirectory(
             fromSubDirectory,
             toSubDirectory,

@@ -12,12 +12,12 @@ class DirectoryInfo extends FileInfoBase {
     }
 
     isSourceControl() {
-        return this.getName().indexOf(".git") == 0;
+        return this.name().indexOf(".git") == 0;
     }
 
     ensureCreated() {
         if (!this.exists()) {
-            fs.mkdirSync(this.getPath());
+            fs.mkdirSync(this.path());
         }
     }
 
@@ -28,10 +28,10 @@ class DirectoryInfo extends FileInfoBase {
             var fileInfos = new FileInfo[];
             var directoryInfos = new DirectoryInfo[];
 
-            var files = fs.readdirSync(this.getPath());
+            var files = fs.readdirSync(this.path());
             files.forEach(
                 function (fileName) {
-                    var path = pathUtil.join(self.getPath(), fileName);
+                    var path = pathUtil.join(self.path(), fileName);
                     var stat = fs.statSync(path);
 
                     if (stat.isDirectory()) {
@@ -48,12 +48,12 @@ class DirectoryInfo extends FileInfoBase {
         }
     }
 
-    getFiles() {
+    files() {
         this.ensureFilesDirectories();
         return this._files;
     }
 
-    getSubDirectories() {
+    subDirectories() {
         this.ensureFilesDirectories();
         return this._directories;
     }

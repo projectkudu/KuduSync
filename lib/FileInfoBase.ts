@@ -11,15 +11,15 @@ class FileInfoBase {
         this._name = pathUtil.relative(pathUtil.dirname(path), path);
     }
 
-    getName(): string {
+    name(): string {
         return this._name;
     }
 
-    getPath(): string {
+    path(): string {
         return this._path;
     }
 
     exists(): string {
-        return fs.existsSync(this.getPath());
+        return fs.existsSync(this.path());
     }
 }

@@ -7,5 +7,6 @@ _ReSharper.*
 *[Rr]e[Ss]harper.user
 _ReSharper.*/
 node_packages/*
+node_modules/*
 lib/*.js
 bin/*.js
