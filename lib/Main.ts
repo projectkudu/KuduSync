@@ -1,6 +1,6 @@
 ///<reference path='fileUtils.ts'/>
 
-if (process.argv.length != 5) {
+if (process.argv.length != 6) {
     console.log("Usage: smartCopy [from directory path] [to directory path] [previous manifest file path] [current manifest file path]");
 }
 else {

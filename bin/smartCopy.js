@@ -225,7 +225,7 @@ function smartCopyDirectory(from, to, fromRootPath, toRootPath, manifest, outMan
         smartCopyDirectory(fromSubDirectory, toSubDirectory, fromRootPath, toRootPath, manifest, outManifest);
     }
 }
-if(process.argv.length != 5) {
+if(process.argv.length != 6) {
     console.log("Usage: smartCopy [from directory path] [to directory path] [previous manifest file path] [current manifest file path]");
 } else {
     var from = process.argv[2];
