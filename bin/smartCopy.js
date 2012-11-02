@@ -1,5 +1,8 @@
 var fs = require('fs');
 var pathUtil = require('path');
+if(!fs.existsSync) {
+    fs.existsSync = pathUtil.existsSync;
+}
 var Ensure;
 (function (Ensure) {
     function argNotNull(arg, argName) {

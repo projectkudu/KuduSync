@@ -6,7 +6,7 @@
   "tags" : ["azure", "deployment"],
   "keywords": [ "node", "azure", "deployment" ],
   "main": "./bin/smartCopy.js",
-  "engines": { "node": ">= 0.8.0" },
+  "engines": { "node": ">= 0.6.20" },
   "scripts": {
     "build": "tsc --module node --out bin/smartCopy.js lib/main.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -24,7 +24,7 @@
   },
   "licenses": [ { "type": "Apache", "url": "http://www.apache.org/licenses/LICENSE-2.0" } ],
   "readmeFilename": "README.markdown",
-  "dependencies": {
+  "devDependencies": {
     "typescript": "~0.8.0"
   }
 }
