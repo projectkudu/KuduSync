@@ -1,5 +1,6 @@
 var fs = require('fs');
 var pathUtil = require('path');
+var log = console.log;
 if(!fs.existsSync) {
     fs.existsSync = pathUtil.existsSync;
 }
@@ -157,14 +158,19 @@ function smartCopy(fromPath, toPath, previousManifestPath, currentManifestPath) 
 function simpleCopy(fromFile, toFilePath) {
     Ensure.argNotNull(fromFile, "fromFile");
     Ensure.argNotNull(toFilePath, "toFilePath");
+    log("Copy file from: " + fromFile.path() + " to: " + toFilePath);
     fs.createReadStream(fromFile.path()).pipe(fs.createWriteStream(toFilePath));
 }
 function deleteFile(file) {
     Ensure.argNotNull(file, "file");
-    fs.unlinkSync(file.path());
+    var path = file.path();
+    log("Deleting file: " + path);
+    fs.unlinkSync(path);
 }
 function deleteDirectoryRecursive(directory) {
     Ensure.argNotNull(directory, "directory");
+    var path = directory.path();
+    log("Deleting directory: " + path);
     var files = directory.files();
     for(var fileKey in files) {
         var file = files[fileKey];
@@ -175,7 +181,7 @@ function deleteDirectoryRecursive(directory) {
         var subDirectory = subDirectories[subDirectoryKey];
         deleteDirectoryRecursive(subDirectory);
     }
-    fs.rmdirSync(directory.path());
+    fs.rmdirSync(path);
 }
 function smartCopyDirectory(from, to, fromRootPath, toRootPath, manifest, outManifest) {
     Ensure.argNotNull(from, "from");
@@ -187,6 +193,7 @@ function smartCopyDirectory(from, to, fromRootPath, toRootPath, manifest, outMan
     if(from.isSourceControl()) {
         return;
     }
+    log("Copy directory from: " + from.path() + " to: " + to.path());
     to.ensureCreated();
     var fromFiles = from.files();
     var toFiles = to.files();

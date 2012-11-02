@@ -20,17 +20,23 @@ function simpleCopy(fromFile: FileInfo, toFilePath: string) {
     Ensure.argNotNull(fromFile, "fromFile");
     Ensure.argNotNull(toFilePath, "toFilePath");
 
+    log("Copy file from: " + fromFile.path() + " to: " + toFilePath);
     fs.createReadStream(fromFile.path()).pipe(fs.createWriteStream(toFilePath));
 }
 
 function deleteFile(file: FileInfo) {
     Ensure.argNotNull(file, "file");
 
-    fs.unlinkSync(file.path());
+    var path = file.path();
+    log("Deleting file: " + path);
+    fs.unlinkSync(path);
 }
 
 function deleteDirectoryRecursive(directory: DirectoryInfo) {
     Ensure.argNotNull(directory, "directory");
+
+    var path = directory.path();
+    log("Deleting directory: " + path);
 
     var files = directory.files();
     for (var fileKey in files) {
@@ -44,7 +50,7 @@ function deleteDirectoryRecursive(directory: DirectoryInfo) {
         deleteDirectoryRecursive(subDirectory);
     }
 
-    fs.rmdirSync(directory.path());
+    fs.rmdirSync(path);
 }
 
 function smartCopyDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath: string, toRootPath: string, manifest: Manifest, outManifest: Manifest) {
@@ -60,6 +66,8 @@ function smartCopyDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath
         // No need to copy the source control directory (.git).
         return;
     }
+
+    log("Copy directory from: " + from.path() + " to: " + to.path());
 
     to.ensureCreated();
 
