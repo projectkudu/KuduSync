@@ -30,7 +30,7 @@ class DirectoryInfo extends FileInfoBase {
 
             var files = fs.readdirSync(this.path());
             files.forEach(
-                function (fileName) {
+                function (fileName: string) {
                     var path = pathUtil.join(self.path(), fileName);
                     var stat = fs.statSync(path);
 

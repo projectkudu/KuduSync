@@ -79,10 +79,10 @@ function smartCopyDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath
     // 2. We have a previous directory and the file exists there
     for (var toFileKey in toFiles) {
         var toFile: FileInfo = toFiles[toFileKey];
-        var toFilePath = toFile.path();
 
-        if (!fromFiles[toFilePath]) {
-            if (manifest.isEmpty() || manifest.isPathInManifest(toFilePath, toRootPath)) {
+        // TODO: handle case sensitivity
+        if (!fromFiles[toFile.name()]) {
+            if (manifest.isEmpty() || manifest.isPathInManifest(toFile.path(), toRootPath)) {
                 deleteFile(toFile);
             }
         }
@@ -112,10 +112,9 @@ function smartCopyDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath
     // 2. We have a previous directory and the file exists there
     for (var toSubDirectoryKey in toSubDirectories) {
         var toSubDirectory: DirectoryInfo = toSubDirectories[toSubDirectoryKey];
-        var toSubDirectoryPath = toSubDirectory.path();
 
-        if (!fromSubDirectories[toSubDirectoryPath]) {
-            if (manifest.isEmpty() || manifest.isPathInManifest(toSubDirectoryPath, toRootPath)) {
+        if (!fromSubDirectories[toSubDirectory.name()]) {
+            if (manifest.isEmpty() || manifest.isPathInManifest(toSubDirectory.path(), toRootPath)) {
                 deleteDirectoryRecursive(toSubDirectory);
             }
         }
