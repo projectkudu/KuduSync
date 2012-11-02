@@ -16,7 +16,7 @@ function smartCopy(fromPath: string, toPath: string, manifestPath: string) {
     Manifest.save(nextManifest, manifestPath);
 }
 
-function dumbCopy(fromFile: FileInfo, toFilePath: string) {
+function simpleCopy(fromFile: FileInfo, toFilePath: string) {
     Ensure.argNotNull(fromFile, "fromFile");
     Ensure.argNotNull(toFilePath, "toFilePath");
 
@@ -91,8 +91,8 @@ function smartCopyDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath
         // last write time is different than the same file in the source (only if it changed)
         var toFile = toFiles[fromFile.getName()];
 
-        dumbCopy(fromFile, pathUtil.join(to.getPath(), fromFile.getName()));
         if (toFile == null || fromFile.getModifiedTime() > toFile.getModifiedTime()) {
+            simpleCopy(fromFile, pathUtil.join(to.getPath(), fromFile.getName()));
         }
     }
 
