@@ -192,7 +192,7 @@ function smartCopyDirectory(from, to, fromRootPath, toRootPath, manifest, outMan
     var toFiles = to.files();
     for(var toFileKey in toFiles) {
         var toFile = toFiles[toFileKey];
-        var toFilePath = toFile.getPath();
+        var toFilePath = toFile.path();
         if(!fromFiles[toFilePath]) {
             if(manifest.isEmpty() || manifest.isPathInManifest(toFilePath, toRootPath)) {
                 deleteFile(toFile);
@@ -201,17 +201,17 @@ function smartCopyDirectory(from, to, fromRootPath, toRootPath, manifest, outMan
     }
     for(var fromFileKey in fromFiles) {
         var fromFile = fromFiles[fromFileKey];
-        outManifest.addFileToManifest(fromFile.getPath(), fromRootPath);
-        var toFile = toFiles[fromFile.getName()];
-        if(toFile == null || fromFile.getModifiedTime() > toFile.getModifiedTime()) {
-            simpleCopy(fromFile, pathUtil.join(to.path(), fromFile.getName()));
+        outManifest.addFileToManifest(fromFile.path(), fromRootPath);
+        var toFile = toFiles[fromFile.name()];
+        if(toFile == null || fromFile.modifiedTime() > toFile.modifiedTime()) {
+            simpleCopy(fromFile, pathUtil.join(to.path(), fromFile.name()));
         }
     }
     var fromSubDirectories = from.subDirectories();
     var toSubDirectories = to.subDirectories();
     for(var toSubDirectoryKey in toSubDirectories) {
         var toSubDirectory = toSubDirectories[toSubDirectoryKey];
-        var toSubDirectoryPath = toSubDirectory.getPath();
+        var toSubDirectoryPath = toSubDirectory.path();
         if(!fromSubDirectories[toSubDirectoryPath]) {
             if(manifest.isEmpty() || manifest.isPathInManifest(toSubDirectoryPath, toRootPath)) {
                 deleteDirectoryRecursive(toSubDirectory);
@@ -220,8 +220,8 @@ function smartCopyDirectory(from, to, fromRootPath, toRootPath, manifest, outMan
     }
     for(var fromSubDirectoryKey in fromSubDirectories) {
         var fromSubDirectory = fromSubDirectories[fromSubDirectoryKey];
-        outManifest.addFileToManifest(fromSubDirectory.getPath(), fromRootPath);
-        var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.getName()));
+        outManifest.addFileToManifest(fromSubDirectory.path(), fromRootPath);
+        var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()));
         smartCopyDirectory(fromSubDirectory, toSubDirectory, fromRootPath, toRootPath, manifest, outManifest);
     }
 }

@@ -70,8 +70,8 @@ function smartCopyDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath
     // 1. We have no previous directory
     // 2. We have a previous directory and the file exists there
     for (var toFileKey in toFiles) {
-        var toFile = toFiles[toFileKey];
-        var toFilePath = toFile.getPath();
+        var toFile: FileInfo = toFiles[toFileKey];
+        var toFilePath = toFile.path();
 
         if (!fromFiles[toFilePath]) {
             if (manifest.isEmpty() || manifest.isPathInManifest(toFilePath, toRootPath)) {
@@ -82,17 +82,17 @@ function smartCopyDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath
 
     // Copy files
     for (var fromFileKey in fromFiles) {
-        var fromFile = fromFiles[fromFileKey];
-        outManifest.addFileToManifest(fromFile.getPath(), fromRootPath);
+        var fromFile: FileInfo = fromFiles[fromFileKey];
+        outManifest.addFileToManifest(fromFile.path(), fromRootPath);
 
         // Skip deployment files
 
         // if the file exists in the destination then only copy it again if it's
         // last write time is different than the same file in the source (only if it changed)
-        var toFile = toFiles[fromFile.getName()];
+        var toFile = toFiles[fromFile.name()];
 
-        if (toFile == null || fromFile.getModifiedTime() > toFile.getModifiedTime()) {
-            simpleCopy(fromFile, pathUtil.join(to.path(), fromFile.getName()));
+        if (toFile == null || fromFile.modifiedTime() > toFile.modifiedTime()) {
+            simpleCopy(fromFile, pathUtil.join(to.path(), fromFile.name()));
         }
     }
 
@@ -103,8 +103,8 @@ function smartCopyDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath
     // 1. We have no previous directory
     // 2. We have a previous directory and the file exists there
     for (var toSubDirectoryKey in toSubDirectories) {
-        var toSubDirectory = toSubDirectories[toSubDirectoryKey];
-        var toSubDirectoryPath = toSubDirectory.getPath();
+        var toSubDirectory: DirectoryInfo = toSubDirectories[toSubDirectoryKey];
+        var toSubDirectoryPath = toSubDirectory.path();
 
         if (!fromSubDirectories[toSubDirectoryPath]) {
             if (manifest.isEmpty() || manifest.isPathInManifest(toSubDirectoryPath, toRootPath)) {
@@ -115,10 +115,10 @@ function smartCopyDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath
 
     // Copy directories
     for (var fromSubDirectoryKey in fromSubDirectories) {
-        var fromSubDirectory = fromSubDirectories[fromSubDirectoryKey];
-        outManifest.addFileToManifest(fromSubDirectory.getPath(), fromRootPath);
+        var fromSubDirectory: DirectoryInfo = fromSubDirectories[fromSubDirectoryKey];
+        outManifest.addFileToManifest(fromSubDirectory.path(), fromRootPath);
 
-        var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.getName()));
+        var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()));
         smartCopyDirectory(
             fromSubDirectory,
             toSubDirectory,
