@@ -8,7 +8,7 @@
   "main": "./bin/smartCopy.js",
   "engines": { "node": ">= 0.8.0" },
   "scripts": {
-    "install": "tsc --module node --out bin/smartCopy.js lib/main.ts",
+    "build": "tsc --module node --out bin/smartCopy.js lib/main.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

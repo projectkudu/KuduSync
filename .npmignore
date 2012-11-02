@@ -5,5 +5,4 @@
 node_modules/
 
 lib/*.js
-bin/*.js
 build.cmd
