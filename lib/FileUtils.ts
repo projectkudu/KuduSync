@@ -1,19 +1,19 @@
 ///<reference path='directoryInfo.ts'/>
 ///<reference path='manifest.ts'/>
 
-function smartCopy(fromPath: string, toPath: string, manifestPath: string) {
+function smartCopy(fromPath: string, toPath: string, previousManifestPath: string, currentManifestPath: string) {
     Ensure.argNotNull(fromPath, "fromPath");
     Ensure.argNotNull(toPath, "toPath");
-    Ensure.argNotNull(manifestPath, "manifestPath");
+    Ensure.argNotNull(previousManifestPath, "manifestPath");
 
     var from = new DirectoryInfo(fromPath);
     var to = new DirectoryInfo(toPath);
 
-    var nextManifest = new Manifest();
+    var currentManifest = new Manifest();
 
-    smartCopyDirectory(from, to, from.getPath(), to.getPath(), Manifest.load(manifestPath), nextManifest);
+    smartCopyDirectory(from, to, from.getPath(), to.getPath(), Manifest.load(previousManifestPath), currentManifest);
 
-    Manifest.save(nextManifest, manifestPath);
+    Manifest.save(currentManifest, currentManifestPath);
 }
 
 function simpleCopy(fromFile: FileInfo, toFilePath: string) {
