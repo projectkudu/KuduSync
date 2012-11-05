@@ -18,5 +18,7 @@ try {
     }
 }
 catch (e) {
-    log("Error: " + e)
+    log("Error: " + e);
 }
+
+exports.smartCopy = smartCopy;

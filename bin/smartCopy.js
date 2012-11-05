@@ -75,7 +75,7 @@ var DirectoryInfo = (function (_super) {
                 if(stat.isDirectory()) {
                     directoryInfos[fileName] = new DirectoryInfo(path);
                 } else {
-                    fileInfos[fileName] = new FileInfo(path, stat);
+                    fileInfos[fileName] = new FileInfo(path, stat.mtime);
                 }
             });
             this._files = fileInfos;
@@ -199,9 +199,8 @@ function smartCopyDirectory(from, to, fromRootPath, toRootPath, manifest, outMan
     var toFiles = to.files();
     for(var toFileKey in toFiles) {
         var toFile = toFiles[toFileKey];
-        var toFilePath = toFile.path();
-        if(!fromFiles[toFilePath]) {
-            if(manifest.isEmpty() || manifest.isPathInManifest(toFilePath, toRootPath)) {
+        if(!fromFiles[toFile.name()]) {
+            if(manifest.isEmpty() || manifest.isPathInManifest(toFile.path(), toRootPath)) {
                 deleteFile(toFile);
             }
         }
@@ -218,9 +217,8 @@ function smartCopyDirectory(from, to, fromRootPath, toRootPath, manifest, outMan
     var toSubDirectories = to.subDirectories();
     for(var toSubDirectoryKey in toSubDirectories) {
         var toSubDirectory = toSubDirectories[toSubDirectoryKey];
-        var toSubDirectoryPath = toSubDirectory.path();
-        if(!fromSubDirectories[toSubDirectoryPath]) {
-            if(manifest.isEmpty() || manifest.isPathInManifest(toSubDirectoryPath, toRootPath)) {
+        if(!fromSubDirectories[toSubDirectory.name()]) {
+            if(manifest.isEmpty() || manifest.isPathInManifest(toSubDirectory.path(), toRootPath)) {
                 deleteDirectoryRecursive(toSubDirectory);
             }
         }
@@ -245,3 +243,4 @@ try  {
 } catch (e) {
     log("Error: " + e);
 }
+exports.smartCopy = smartCopy;

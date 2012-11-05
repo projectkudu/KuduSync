@@ -38,7 +38,7 @@ class DirectoryInfo extends FileInfoBase {
                         directoryInfos[fileName] = new DirectoryInfo(path);
                     }
                     else {
-                        fileInfos[fileName] = new FileInfo(path, stat);
+                        fileInfos[fileName] = new FileInfo(path, stat.mtime);
                     }
                 }
             );
