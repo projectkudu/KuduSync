@@ -11,9 +11,11 @@ class Manifest {
     }
 
     static load(manifestPath: string) {
-        Ensure.argNotNull(manifestPath, "manifestPath");
-
         var manifest = new Manifest();
+
+        if (manifestPath == null) {
+            return manifest;
+        }
 
         try {
             var filePaths = fs.readFileSync(manifestPath, 'utf8').split("\n");

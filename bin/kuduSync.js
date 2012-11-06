@@ -98,8 +98,10 @@ var Manifest = (function () {
         this._isEmpty = true;
     }
     Manifest.load = function load(manifestPath) {
-        Ensure.argNotNull(manifestPath, "manifestPath");
         var manifest = new Manifest();
+        if(manifestPath == null) {
+            return manifest;
+        }
         try  {
             var filePaths = fs.readFileSync(manifestPath, 'utf8').split("\n");
             var files = new Array();
@@ -145,15 +147,15 @@ var Manifest = (function () {
     };
     return Manifest;
 })();
-function kuduSync(fromPath, toPath, previousManifestPath, currentManifestPath) {
+function kuduSync(fromPath, toPath, nextManifestPath, previousManifestPath) {
     Ensure.argNotNull(fromPath, "fromPath");
     Ensure.argNotNull(toPath, "toPath");
-    Ensure.argNotNull(previousManifestPath, "manifestPath");
+    Ensure.argNotNull(nextManifestPath, "nextManifestPath");
     var from = new DirectoryInfo(fromPath);
     var to = new DirectoryInfo(toPath);
-    var currentManifest = new Manifest();
-    kuduSyncDirectory(from, to, from.path(), to.path(), Manifest.load(previousManifestPath), currentManifest);
-    Manifest.save(currentManifest, currentManifestPath);
+    var nextManifest = new Manifest();
+    kuduSyncDirectory(from, to, from.path(), to.path(), Manifest.load(previousManifestPath), nextManifest);
+    Manifest.save(nextManifest, nextManifestPath);
 }
 exports.kuduSync = kuduSync;
 function copyFile(fromFile, toFilePath) {
@@ -232,14 +234,17 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
     }
 }
 try  {
-    if(process.argv.length != 6) {
-        console.log("Usage: kuduSync [from directory path] [to directory path] [previous manifest file path] [current manifest file path]");
+    if(process.argv.length < 5) {
+        console.log("Usage: kuduSync [from directory path] [to directory path] [next manifest file path] [previous manifest file path (optional)]");
     } else {
         var from = process.argv[2];
         var to = process.argv[3];
-        var previousManifestPath = process.argv[4];
-        var currentManifestPath = process.argv[5];
-        kuduSync(from, to, previousManifestPath, currentManifestPath);
+        var nextManifestPath = process.argv[4];
+        var previousManifestPath = null;
+        if(process.argv.length > 5) {
+            var previousManifestPath = process.argv[5];
+        }
+        kuduSync(from, to, nextManifestPath, previousManifestPath);
     }
 } catch (e) {
     log("Error: " + e);

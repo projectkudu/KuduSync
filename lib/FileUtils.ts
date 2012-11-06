@@ -1,19 +1,19 @@
 ///<reference path='directoryInfo.ts'/>
 ///<reference path='manifest.ts'/>
 
-function kuduSync(fromPath: string, toPath: string, previousManifestPath: string, currentManifestPath: string) {
+function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, previousManifestPath: string) {
     Ensure.argNotNull(fromPath, "fromPath");
     Ensure.argNotNull(toPath, "toPath");
-    Ensure.argNotNull(previousManifestPath, "manifestPath");
+    Ensure.argNotNull(nextManifestPath, "nextManifestPath");
 
     var from = new DirectoryInfo(fromPath);
     var to = new DirectoryInfo(toPath);
 
-    var currentManifest = new Manifest();
+    var nextManifest = new Manifest();
 
-    kuduSyncDirectory(from, to, from.path(), to.path(), Manifest.load(previousManifestPath), currentManifest);
+    kuduSyncDirectory(from, to, from.path(), to.path(), Manifest.load(previousManifestPath), nextManifest);
 
-    Manifest.save(currentManifest, currentManifestPath);
+    Manifest.save(nextManifest, nextManifestPath);
 }
 
 exports.kuduSync = kuduSync;
