@@ -1,26 +1,39 @@
 ///<reference path='fileUtils.ts'/>
+///<reference path='../typings/commander.d.ts'/>
+
+var commander: Commander = require("commander");
+
+commander
+    .version("0.0.1")
+    .option("-f, --fromDir [dir path]", "Source directory to sync (* required)")
+    .option("-t, --toDir [dir path]", "Destination directory to sync (* required)")
+    .option("-p, --previousManifest [manifest file path]", "Previous manifest file path (* required)")
+    .option("-n, --nextManifest [manifest file path]", "Next manifest file path (optional)")
+    .option("-q, --quiet", "No logging")
+    .option("-w, --whatIf", "Only log without actual copy/remove of files")
+    .parse(process.argv);
 
 try {
-    if (process.argv.length < 5) {
-        console.log("Usage: kuduSync [from directory path] [to directory path] [next manifest file path] [previous manifest file path (optional)]");
-    }
-    else {
-        var from = process.argv[2];
-        var to = process.argv[3];
-        var nextManifestPath = process.argv[4];
-        var previousManifestPath = null;
+    var commanderValues: any = commander;
+    var fromDir = commanderValues.fromDir;
+    var toDir = commanderValues.toDir;
+    var previousManifest = commanderValues.previousManifest;
+    var nextManifest = commanderValues.nextManifest;
+    var quiet = commanderValues.quiet;
+    var whatIf = commanderValues.whatIf;
 
-        if (process.argv.length > 5) {
-            var previousManifestPath = process.argv[5];
-        }
-
-        kuduSync(
-            from,
-            to,
-            nextManifestPath,
-            previousManifestPath);
+    if (quiet) {
+        // Change log to be no op
+        log = () => { };
     }
+
+    kuduSync(
+        fromDir,
+        toDir,
+        nextManifest,
+        previousManifest,
+        whatIf);
 }
 catch (e) {
-    log("Error: " + e);
+    log("" + e);
 }

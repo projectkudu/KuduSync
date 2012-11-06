@@ -89,6 +89,10 @@ suite('Kudu Sync Functional Tests', function () {
         });
     });
 
+    test('Several files should not be sync\'d with whatIf flag set to true', function (done) {
+        runKuduSyncTestScenario(["file1", "file2", "file3"], [], done, /*whatIf*/true);
+    });
+
     setup(function () {
         // Setting a different test directory per test.
         incrementTestDir();
@@ -104,10 +108,10 @@ suite('Kudu Sync Functional Tests', function () {
 // 1. Create/update or remove files from updatedFiles on the source path
 // 2. Run the kudu sync function
 // 3. Verify expectedFiles exist (or not exist) in the destination path
-function runKuduSyncTestScenario(updatedFiles, expectedFiles, done) {
+function runKuduSyncTestScenario(updatedFiles, expectedFiles, done, whatIf) {
     generateFromFiles(updatedFiles);
 
-    runKuduSync("manifest1", "manifest1");
+    runKuduSync("manifest1", "manifest1", whatIf);
 
     // Small timeout to make sure files were persisted in file system.
     setTimeout(function () {
@@ -143,13 +147,13 @@ function testFileShouldBeEqual(file) {
     filesShouldBeEqual(from, to, file);
 }
 
-function runKuduSync(prevManifestFile, nextManifestFile) {
+function runKuduSync(prevManifestFile, nextManifestFile, whatIf) {
     var from = pathUtil.join(baseTestTempDir, testDir, fromDir);
     var to = pathUtil.join(baseTestTempDir, testDir, toDir);
     var prevManifestPath = pathUtil.join(baseTestTempDir, testDir, prevManifestFile);
     var nextManifestPath = pathUtil.join(baseTestTempDir, testDir, nextManifestFile);
 
-    ks.kuduSync(from, to, prevManifestPath, nextManifestPath);
+    ks.kuduSync(from, to, nextManifestPath, prevManifestPath);
 }
 
 function generateFromFiles(files) {

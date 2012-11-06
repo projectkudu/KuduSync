@@ -1,7 +1,7 @@
 ///<reference path='directoryInfo.ts'/>
 ///<reference path='manifest.ts'/>
 
-function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, previousManifestPath: string) {
+function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, previousManifestPath: string, whatIf: bool) {
     Ensure.argNotNull(fromPath, "fromPath");
     Ensure.argNotNull(toPath, "toPath");
     Ensure.argNotNull(nextManifestPath, "nextManifestPath");
@@ -11,30 +11,41 @@ function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, pr
 
     var nextManifest = new Manifest();
 
-    kuduSyncDirectory(from, to, from.path(), to.path(), Manifest.load(previousManifestPath), nextManifest);
+    log("Kudu sync from: " + from.path() + " to: " + to.path());
 
-    Manifest.save(nextManifest, nextManifestPath);
+    kuduSyncDirectory(from, to, from.path(), to.path(), Manifest.load(previousManifestPath), nextManifest, whatIf);
+
+    if (!whatIf) {
+        Manifest.save(nextManifest, nextManifestPath);
+    }
 }
 
 exports.kuduSync = kuduSync;
 
-function copyFile(fromFile: FileInfo, toFilePath: string) {
+function copyFile(fromFile: FileInfo, toFilePath: string, whatIf: bool) {
     Ensure.argNotNull(fromFile, "fromFile");
     Ensure.argNotNull(toFilePath, "toFilePath");
 
     log("Copy file from: " + fromFile.path() + " to: " + toFilePath);
-    fs.createReadStream(fromFile.path()).pipe(fs.createWriteStream(toFilePath));
+
+    if (!whatIf) {
+        fs.createReadStream(fromFile.path()).pipe(fs.createWriteStream(toFilePath));
+    }
 }
 
-function deleteFile(file: FileInfo) {
+function deleteFile(file: FileInfo, whatIf: bool) {
     Ensure.argNotNull(file, "file");
 
     var path = file.path();
+
     log("Deleting file: " + path);
-    fs.unlinkSync(path);
+
+    if (!whatIf) {
+        fs.unlinkSync(path);
+    }
 }
 
-function deleteDirectoryRecursive(directory: DirectoryInfo) {
+function deleteDirectoryRecursive(directory: DirectoryInfo, whatIf: bool) {
     Ensure.argNotNull(directory, "directory");
 
     var path = directory.path();
@@ -43,19 +54,21 @@ function deleteDirectoryRecursive(directory: DirectoryInfo) {
     var files = directory.files();
     for (var fileKey in files) {
         var file = files[fileKey];
-        deleteFile(file);
+        deleteFile(file, whatIf);
     }
 
     var subDirectories = directory.subDirectories();
     for (var subDirectoryKey in subDirectories) {
         var subDirectory = subDirectories[subDirectoryKey];
-        deleteDirectoryRecursive(subDirectory);
+        deleteDirectoryRecursive(subDirectory, whatIf);
     }
 
-    fs.rmdirSync(path);
+    if (!whatIf) {
+        fs.rmdirSync(path);
+    }
 }
 
-function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath: string, toRootPath: string, manifest: Manifest, outManifest: Manifest) {
+function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath: string, toRootPath: string, manifest: Manifest, outManifest: Manifest, whatIf: bool) {
     Ensure.argNotNull(from, "from");
     Ensure.argNotNull(to, "to");
     Ensure.argNotNull(fromRootPath, "fromRootPath");
@@ -69,12 +82,12 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
         return;
     }
 
-    log("Copy directory from: " + from.path() + " to: " + to.path());
-
-    to.ensureCreated();
+    if (!whatIf) {
+        to.ensureCreated();
+    }
 
     var fromFiles = from.files();
-    var toFiles = to.files();
+    var toFiles = getFilesConsiderWhatIf(to, whatIf);
 
     // If the file doesn't exist in the source, only delete if:
     // 1. We have no previous directory
@@ -85,7 +98,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
         // TODO: handle case sensitivity
         if (!fromFiles[toFile.name()]) {
             if (manifest.isEmpty() || manifest.isPathInManifest(toFile.path(), toRootPath)) {
-                deleteFile(toFile);
+                deleteFile(toFile, whatIf);
             }
         }
     }
@@ -102,12 +115,12 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
         var toFile = toFiles[fromFile.name()];
 
         if (toFile == null || fromFile.modifiedTime() > toFile.modifiedTime()) {
-            copyFile(fromFile, pathUtil.join(to.path(), fromFile.name()));
+            copyFile(fromFile, pathUtil.join(to.path(), fromFile.name()), whatIf);
         }
     }
 
     var fromSubDirectories = from.subDirectories();
-    var toSubDirectories = to.subDirectories();
+    var toSubDirectories = getSubDirectoriesConsiderWhatIf(to, whatIf);
 
     // If the file doesn't exist in the source, only delete if:
     // 1. We have no previous directory
@@ -117,7 +130,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
 
         if (!fromSubDirectories[toSubDirectory.name()]) {
             if (manifest.isEmpty() || manifest.isPathInManifest(toSubDirectory.path(), toRootPath)) {
-                deleteDirectoryRecursive(toSubDirectory);
+                deleteDirectoryRecursive(toSubDirectory, whatIf);
             }
         }
     }
@@ -134,6 +147,33 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
             fromRootPath,
             toRootPath,
             manifest,
-            outManifest);
+            outManifest,
+            whatIf);
+    }
+}
+
+function getFilesConsiderWhatIf(dir: DirectoryInfo, whatIf: bool): FileInfo[] {
+    try {
+        return dir.files();
+    }
+    catch (e) {
+        if (whatIf) {
+            return [];
+        }
+
+        throw e;
+    }
+}
+
+function getSubDirectoriesConsiderWhatIf(dir: DirectoryInfo, whatIf: bool): DirectoryInfo[] {
+    try {
+        return dir.subDirectories();
+    }
+    catch (e) {
+        if (whatIf) {
+            return [];
+        }
+
+        throw e;
     }
 }
