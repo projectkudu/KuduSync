@@ -35,5 +35,9 @@ try {
         whatIf);
 }
 catch (e) {
-    log("" + e);
+    // Errors should always be logged
+    console.log("" + e);
+
+    // Exit with an error code
+    process.exit(1);
 }

@@ -279,5 +279,6 @@ try  {
     }
     kuduSync(fromDir, toDir, nextManifest, previousManifest, whatIf);
 } catch (e) {
-    log("" + e);
+    console.log("" + e);
+    process.exit(1);
 }
