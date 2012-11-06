@@ -1,7 +1,7 @@
 ///<reference path='directoryInfo.ts'/>
 ///<reference path='manifest.ts'/>
 
-function smartCopy(fromPath: string, toPath: string, previousManifestPath: string, currentManifestPath: string) {
+function kuduSync(fromPath: string, toPath: string, previousManifestPath: string, currentManifestPath: string) {
     Ensure.argNotNull(fromPath, "fromPath");
     Ensure.argNotNull(toPath, "toPath");
     Ensure.argNotNull(previousManifestPath, "manifestPath");
@@ -11,12 +11,14 @@ function smartCopy(fromPath: string, toPath: string, previousManifestPath: strin
 
     var currentManifest = new Manifest();
 
-    smartCopyDirectory(from, to, from.path(), to.path(), Manifest.load(previousManifestPath), currentManifest);
+    kuduSyncDirectory(from, to, from.path(), to.path(), Manifest.load(previousManifestPath), currentManifest);
 
     Manifest.save(currentManifest, currentManifestPath);
 }
 
-function simpleCopy(fromFile: FileInfo, toFilePath: string) {
+exports.kuduSync = kuduSync;
+
+function copyFile(fromFile: FileInfo, toFilePath: string) {
     Ensure.argNotNull(fromFile, "fromFile");
     Ensure.argNotNull(toFilePath, "toFilePath");
 
@@ -53,7 +55,7 @@ function deleteDirectoryRecursive(directory: DirectoryInfo) {
     fs.rmdirSync(path);
 }
 
-function smartCopyDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath: string, toRootPath: string, manifest: Manifest, outManifest: Manifest) {
+function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath: string, toRootPath: string, manifest: Manifest, outManifest: Manifest) {
     Ensure.argNotNull(from, "from");
     Ensure.argNotNull(to, "to");
     Ensure.argNotNull(fromRootPath, "fromRootPath");
@@ -100,7 +102,7 @@ function smartCopyDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath
         var toFile = toFiles[fromFile.name()];
 
         if (toFile == null || fromFile.modifiedTime() > toFile.modifiedTime()) {
-            simpleCopy(fromFile, pathUtil.join(to.path(), fromFile.name()));
+            copyFile(fromFile, pathUtil.join(to.path(), fromFile.name()));
         }
     }
 
@@ -126,7 +128,7 @@ function smartCopyDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath
         outManifest.addFileToManifest(fromSubDirectory.path(), fromRootPath);
 
         var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()));
-        smartCopyDirectory(
+        kuduSyncDirectory(
             fromSubDirectory,
             toSubDirectory,
             fromRootPath,

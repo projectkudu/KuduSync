@@ -1,7 +1,7 @@
 // Functional tests using mocha and should.
 
 // The tested module
-var kuduSync = require("../bin/smartCopy.js");
+var ks = require("../bin/kuduSync.js");
 
 var should = require("should");
 var fs = require("fs");
@@ -149,7 +149,7 @@ function runKuduSync(prevManifestFile, nextManifestFile) {
     var prevManifestPath = pathUtil.join(baseTestTempDir, testDir, prevManifestFile);
     var nextManifestPath = pathUtil.join(baseTestTempDir, testDir, nextManifestFile);
 
-    kuduSync.smartCopy(from, to, prevManifestPath, nextManifestPath);
+    ks.kuduSync(from, to, prevManifestPath, nextManifestPath);
 }
 
 function generateFromFiles(files) {

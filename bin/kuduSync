@@ -16,4 +16,4 @@
 */
  
 
-require('./smartCopy.js');
+require('./kuduSync.js');

@@ -1,8 +1,8 @@
 {
-  "name": "smartCopy",
+  "name": "kuduSync",
   "author": "Outercurve Foundation",
   "version": "0.0.1",
-  "description": "Tool for copying files for deployment, will only copy changed files and delete files that doesn't exists in the destination but only if they were part of the previous deployment.",
+  "description": "Tool for syncing files for deployment, will only copy changed files and delete files that doesn't exists in the destination but only if they were part of the previous deployment.",
   "tags": [
     "azure",
     "deployment"
@@ -12,24 +12,24 @@
     "azure",
     "deployment"
   ],
-  "main": "./bin/smartCopy.js",
+  "main": "./bin/kuduSync.js",
   "engines": {
     "node": ">= 0.6.20"
   },
   "scripts": {
-    "build": "tsc --module node --out bin/smartCopy.js lib/main.ts",
+    "build": "tsc --module node --out bin/kuduSync.js lib/main.ts",
     "test": "mocha -u tdd test -R spec --slow 3000 --timeout 6000"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/projectkudu/SmartCopy.git"
+    "url": "https://github.com/projectkudu/KuduSync.git"
   },
-  "homepage": "http://github.com/projectkudu/SmartCopy",
+  "homepage": "http://github.com/projectkudu/KuduSync",
   "bugs": {
-    "url": "http://github.com/projectkudu/SmartCopy/issues"
+    "url": "http://github.com/projectkudu/KuduSync/issues"
   },
   "bin": {
-    "smartCopy": "./bin/smartCopy"
+    "kuduSync": "./bin/kuduSync"
   },
   "licenses": [
     {

@@ -2,7 +2,7 @@
 
 try {
     if (process.argv.length != 6) {
-        console.log("Usage: smartCopy [from directory path] [to directory path] [previous manifest file path] [current manifest file path]");
+        console.log("Usage: kuduSync [from directory path] [to directory path] [previous manifest file path] [current manifest file path]");
     }
     else {
         var from = process.argv[2];
@@ -10,7 +10,7 @@ try {
         var previousManifestPath = process.argv[4];
         var currentManifestPath = process.argv[5];
 
-        smartCopy(
+        kuduSync(
             from,
             to,
             previousManifestPath,
@@ -20,5 +20,3 @@ try {
 catch (e) {
     log("Error: " + e);
 }
-
-exports.smartCopy = smartCopy;

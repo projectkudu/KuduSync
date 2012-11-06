@@ -145,17 +145,18 @@ var Manifest = (function () {
     };
     return Manifest;
 })();
-function smartCopy(fromPath, toPath, previousManifestPath, currentManifestPath) {
+function kuduSync(fromPath, toPath, previousManifestPath, currentManifestPath) {
     Ensure.argNotNull(fromPath, "fromPath");
     Ensure.argNotNull(toPath, "toPath");
     Ensure.argNotNull(previousManifestPath, "manifestPath");
     var from = new DirectoryInfo(fromPath);
     var to = new DirectoryInfo(toPath);
     var currentManifest = new Manifest();
-    smartCopyDirectory(from, to, from.path(), to.path(), Manifest.load(previousManifestPath), currentManifest);
+    kuduSyncDirectory(from, to, from.path(), to.path(), Manifest.load(previousManifestPath), currentManifest);
     Manifest.save(currentManifest, currentManifestPath);
 }
-function simpleCopy(fromFile, toFilePath) {
+exports.kuduSync = kuduSync;
+function copyFile(fromFile, toFilePath) {
     Ensure.argNotNull(fromFile, "fromFile");
     Ensure.argNotNull(toFilePath, "toFilePath");
     log("Copy file from: " + fromFile.path() + " to: " + toFilePath);
@@ -183,7 +184,7 @@ function deleteDirectoryRecursive(directory) {
     }
     fs.rmdirSync(path);
 }
-function smartCopyDirectory(from, to, fromRootPath, toRootPath, manifest, outManifest) {
+function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outManifest) {
     Ensure.argNotNull(from, "from");
     Ensure.argNotNull(to, "to");
     Ensure.argNotNull(fromRootPath, "fromRootPath");
@@ -210,7 +211,7 @@ function smartCopyDirectory(from, to, fromRootPath, toRootPath, manifest, outMan
         outManifest.addFileToManifest(fromFile.path(), fromRootPath);
         var toFile = toFiles[fromFile.name()];
         if(toFile == null || fromFile.modifiedTime() > toFile.modifiedTime()) {
-            simpleCopy(fromFile, pathUtil.join(to.path(), fromFile.name()));
+            copyFile(fromFile, pathUtil.join(to.path(), fromFile.name()));
         }
     }
     var fromSubDirectories = from.subDirectories();
@@ -227,20 +228,19 @@ function smartCopyDirectory(from, to, fromRootPath, toRootPath, manifest, outMan
         var fromSubDirectory = fromSubDirectories[fromSubDirectoryKey];
         outManifest.addFileToManifest(fromSubDirectory.path(), fromRootPath);
         var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()));
-        smartCopyDirectory(fromSubDirectory, toSubDirectory, fromRootPath, toRootPath, manifest, outManifest);
+        kuduSyncDirectory(fromSubDirectory, toSubDirectory, fromRootPath, toRootPath, manifest, outManifest);
     }
 }
 try  {
     if(process.argv.length != 6) {
-        console.log("Usage: smartCopy [from directory path] [to directory path] [previous manifest file path] [current manifest file path]");
+        console.log("Usage: kuduSync [from directory path] [to directory path] [previous manifest file path] [current manifest file path]");
     } else {
         var from = process.argv[2];
         var to = process.argv[3];
         var previousManifestPath = process.argv[4];
         var currentManifestPath = process.argv[5];
-        smartCopy(from, to, previousManifestPath, currentManifestPath);
+        kuduSync(from, to, previousManifestPath, currentManifestPath);
     }
 } catch (e) {
     log("Error: " + e);
 }
-exports.smartCopy = smartCopy;
