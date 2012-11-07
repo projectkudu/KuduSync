@@ -60,8 +60,12 @@ var DirectoryInfo = (function (_super) {
     };
     DirectoryInfo.prototype.ensureCreated = function () {
         if(!this.exists()) {
+            this.parent().ensureCreated();
             fs.mkdirSync(this.path());
         }
+    };
+    DirectoryInfo.prototype.parent = function () {
+        return new DirectoryInfo(pathUtil.dirname(this.path()));
     };
     DirectoryInfo.prototype.ensureFilesDirectories = function () {
         var self = this;

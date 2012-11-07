@@ -17,8 +17,13 @@ class DirectoryInfo extends FileInfoBase {
 
     ensureCreated() {
         if (!this.exists()) {
+            this.parent().ensureCreated();
             fs.mkdirSync(this.path());
         }
+    }
+
+    parent(): DirectoryInfo {
+        return new DirectoryInfo(pathUtil.dirname(this.path()));
     }
 
     private ensureFilesDirectories() {
