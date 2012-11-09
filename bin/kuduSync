@@ -16,4 +16,5 @@
 */
  
 
-require('./smartCopy.js');
+var ks = require('./kuduSync.js');
+ks.main();

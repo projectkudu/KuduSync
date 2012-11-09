@@ -15,10 +15,26 @@ class DirectoryInfo extends FileInfoBase {
         return this.name().indexOf(".git") == 0;
     }
 
-    ensureCreated() {
+    ensureCreated(callback: (err) => void) {
         if (!this.exists()) {
-            fs.mkdirSync(this.path());
+            this.parent().ensureCreated((err) => {
+                if (err) {
+                    callback(err);
+                    return;
+                }
+
+                attempt(
+                    (attemptCallback) => fs.mkdir(this.path(), attemptCallback),
+                    callback);
+            });
+            return;
         }
+
+        callback(null);
+    }
+
+    parent(): DirectoryInfo {
+        return new DirectoryInfo(pathUtil.dirname(this.path()));
     }
 
     private ensureFilesDirectories() {
@@ -28,9 +44,10 @@ class DirectoryInfo extends FileInfoBase {
             var fileInfos = new FileInfo[];
             var directoryInfos = new DirectoryInfo[];
 
+            // TODO: Add retry here.
             var files = fs.readdirSync(this.path());
             files.forEach(
-                function (fileName) {
+                function (fileName: string) {
                     var path = pathUtil.join(self.path(), fileName);
                     var stat = fs.statSync(path);
 
@@ -38,7 +55,7 @@ class DirectoryInfo extends FileInfoBase {
                         directoryInfos[fileName] = new DirectoryInfo(path);
                     }
                     else {
-                        fileInfos[fileName] = new FileInfo(path, stat);
+                        fileInfos[fileName] = new FileInfo(path, stat.mtime);
                     }
                 }
             );
