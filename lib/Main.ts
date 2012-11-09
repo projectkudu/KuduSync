@@ -6,10 +6,10 @@ function main() {
 
     commander
         .version("0.0.1")
-        .option("-f, --fromDir [dir path]", "Source directory to sync (* required)")
-        .option("-t, --toDir [dir path]", "Destination directory to sync (* required)")
-        .option("-p, --previousManifest [manifest file path]", "Previous manifest file path (* required)")
-        .option("-n, --nextManifest [manifest file path]", "Next manifest file path (optional)")
+        .option("-f, --fromDir <dir path>", "Source directory to sync")
+        .option("-t, --toDir <dir path>", "Destination directory to sync")
+        .option("-p, --previousManifest <manifest file path>", "Previous manifest file path")
+        .option("-n, --nextManifest [manifest file path]", "Next manifest file path")
         .option("-q, --quiet", "No logging")
         .option("-w, --whatIf", "Only log without actual copy/remove of files")
         .parse(process.argv);
