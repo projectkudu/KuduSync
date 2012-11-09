@@ -15,11 +15,20 @@ class DirectoryInfo extends FileInfoBase {
         return this.name().indexOf(".git") == 0;
     }
 
-    ensureCreated() {
+    ensureCreated(callback: (err) => void) {
         if (!this.exists()) {
-            this.parent().ensureCreated();
-            fs.mkdirSync(this.path());
+            this.parent().ensureCreated((err) => {
+                if (err) {
+                    callback(err);
+                    return;
+                }
+
+                fs.mkdir(this.path(), callback);
+            });
+            return;
         }
+
+        callback(null);
     }
 
     parent(): DirectoryInfo {

@@ -16,4 +16,5 @@
 */
  
 
-require('./kuduSync.js');
+var ks = require('./kuduSync.js');
+ks.main();

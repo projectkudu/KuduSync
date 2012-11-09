@@ -1,7 +1,6 @@
 @echo off
 
-echo Installing typescript
-call npm install -g typescript
+call npm install
 
 echo Building JavaScript from TypeScript files
-npm run-script build
+call npm run-script build

@@ -10,15 +10,28 @@ class Manifest {
         this._isEmpty = true;
     }
 
-    static load(manifestPath: string) {
+    static load(manifestPath: string, callback: (err, manifest) => void) {
         var manifest = new Manifest();
 
         if (manifestPath == null) {
-            return manifest;
+            callback(null, manifest);
+            return;
         }
 
-        try {
-            var filePaths = fs.readFileSync(manifestPath, 'utf8').split("\n");
+        fs.readFile(manifestPath, 'utf8', (err, content) => {
+            if (err) {
+                // If failed on file not found (34), return an empty manifest
+                if (err.errno == 34) {
+                    callback(null, manifest)
+                }
+                else {
+                    callback(err, null);
+                }
+
+                return;
+            }
+
+            var filePaths = content.split("\n");
             var files = new string[];
             filePaths.forEach(
                 function (filePath) {
@@ -30,16 +43,11 @@ class Manifest {
                 }
             );
 
-            manifest._files = files;
-        }
-        catch (e) {
-            // TODO: handle failures
-        }
-
-        return manifest;
+            callback(null, manifest);
+        });
     }
 
-    static save(manifest: Manifest, manifestPath: string) {
+    static save(manifest: Manifest, manifestPath: string, callback: (err) => void) {
         Ensure.argNotNull(manifest, "manifest");
         Ensure.argNotNull(manifestPath, "manifestPath");
 
@@ -54,7 +62,7 @@ class Manifest {
 
         var manifestFileContent = filesForOutput.join("\n");
 
-        fs.writeFileSync(manifestPath, manifestFileContent, 'utf8');
+        fs.writeFile(manifestPath, manifestFileContent, 'utf8', callback);
     }
 
     isPathInManifest(path: string, rootPath: string) {
@@ -62,7 +70,6 @@ class Manifest {
         Ensure.argNotNull(rootPath, "rootPath");
 
         var relativePath = pathUtil.relative(rootPath, path);
-        // console.log("isPathInManifest: " + this._files[relativePath] + " " + this._files[relativePath] != null);
         return this._files[relativePath] != null;
     }
 

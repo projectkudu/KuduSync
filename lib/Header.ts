@@ -1,7 +1,9 @@
 ///<reference path='..\typings\node.d.ts'/>
+///<reference path='..\typings\async.d.ts'/>
 
 var fs = require('fs');
 var pathUtil = require('path');
+var async = require('async');
 
 var log = console.log;
 

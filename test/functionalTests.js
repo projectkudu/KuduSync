@@ -1,5 +1,7 @@
 // Functional tests using mocha and should.
 
+var testFlag = true;
+
 // The tested module
 var ks = require("../bin/kuduSync.js");
 
@@ -108,16 +110,21 @@ suite('Kudu Sync Functional Tests', function () {
 // 1. Create/update or remove files from updatedFiles on the source path
 // 2. Run the kudu sync function
 // 3. Verify expectedFiles exist (or not exist) in the destination path
-function runKuduSyncTestScenario(updatedFiles, expectedFiles, done, whatIf) {
+function runKuduSyncTestScenario(updatedFiles, expectedFiles, callback, whatIf) {
     generateFromFiles(updatedFiles);
 
-    runKuduSync("manifest1", "manifest1", whatIf);
+    runKuduSync("manifest1", "manifest1", whatIf, function (err) {
+        if (err) {
+            callback(err);
+            return;
+        }
 
-    // Small timeout to make sure files were persisted in file system.
-    setTimeout(function () {
-        testFilesShouldBeEqual(expectedFiles);
-        done();
-    }, 100);
+        // Small timeout to make sure files were persisted in file system.
+        setTimeout(function () {
+            testFilesShouldBeEqual(expectedFiles);
+            callback();
+        }, 100);
+    });
 }
 
 function incrementTestDir() {
@@ -147,13 +154,13 @@ function testFileShouldBeEqual(file) {
     filesShouldBeEqual(from, to, file);
 }
 
-function runKuduSync(prevManifestFile, nextManifestFile, whatIf) {
+function runKuduSync(prevManifestFile, nextManifestFile, whatIf, callback) {
     var from = pathUtil.join(baseTestTempDir, testDir, fromDir);
     var to = pathUtil.join(baseTestTempDir, testDir, toDir);
     var prevManifestPath = pathUtil.join(baseTestTempDir, testDir, prevManifestFile);
     var nextManifestPath = pathUtil.join(baseTestTempDir, testDir, nextManifestFile);
 
-    ks.kuduSync(from, to, nextManifestPath, prevManifestPath);
+    ks.kuduSync(from, to, nextManifestPath, prevManifestPath, whatIf, callback);
 }
 
 function generateFromFiles(files) {
