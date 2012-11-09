@@ -153,14 +153,21 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
 
             seriesCallback(null);
         },
-        (seriesCallback) => {
-            fromFiles = from.files();
-            toFiles = getFilesConsiderWhatIf(to, whatIf);
-            fromSubDirectories = from.subDirectories();
-            toSubDirectories = getSubDirectoriesConsiderWhatIf(to, whatIf);
 
-            seriesCallback(null);
+        (seriesCallback) => {
+            try {
+                fromFiles = from.files();
+                toFiles = getFilesConsiderWhatIf(to, whatIf);
+                fromSubDirectories = from.subDirectories();
+                toSubDirectories = getSubDirectoriesConsiderWhatIf(to, whatIf);
+
+                seriesCallback(null);
+            }
+            catch (err) {
+                seriesCallback(err);
+            }
         },
+
         (seriesCallback) => {
             // If the file doesn't exist in the source, only delete if:
             // 1. We have no previous directory
@@ -181,6 +188,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                 seriesCallback
             );
         },
+
         (seriesCallback) => {
             // Copy files
             async.forEach(
@@ -204,6 +212,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                 seriesCallback
             );
         },
+
         (seriesCallback) => {
             async.forEach(
                 toSubDirectories,
@@ -223,6 +232,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                 seriesCallback
             );
         },
+
         (seriesCallback) => {
             // Copy directories
             async.forEach(

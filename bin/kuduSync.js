@@ -275,11 +275,15 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
             seriesCallback(null);
         }, 
         function (seriesCallback) {
-            fromFiles = from.files();
-            toFiles = getFilesConsiderWhatIf(to, whatIf);
-            fromSubDirectories = from.subDirectories();
-            toSubDirectories = getSubDirectoriesConsiderWhatIf(to, whatIf);
-            seriesCallback(null);
+            try  {
+                fromFiles = from.files();
+                toFiles = getFilesConsiderWhatIf(to, whatIf);
+                fromSubDirectories = from.subDirectories();
+                toSubDirectories = getSubDirectoriesConsiderWhatIf(to, whatIf);
+                seriesCallback(null);
+            } catch (err) {
+                seriesCallback(err);
+            }
         }, 
         function (seriesCallback) {
             async.forEach(toFiles, function (toFile, fileCallback) {
@@ -359,6 +363,7 @@ function main() {
     if(!fromDir || !toDir || !nextManifest) {
         console.log("Error: Missing required argument");
         commander.help();
+        process.exit(1);
         return;
     }
     kuduSync(fromDir, toDir, nextManifest, previousManifest, whatIf, function (err) {

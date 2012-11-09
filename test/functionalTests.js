@@ -95,6 +95,18 @@ suite('Kudu Sync Functional Tests', function () {
         runKuduSyncTestScenario(["file1", "file2", "file3"], [], done, /*whatIf*/true);
     });
 
+    test('From directory doesn\'t exists should fail', function (done) {
+        var from = pathUtil.join(baseTestTempDir, testDir, fromDir + "aaa");
+        var to = pathUtil.join(baseTestTempDir, testDir, toDir);
+        var prevManifestPath = pathUtil.join(baseTestTempDir, testDir, "manifest1");
+        var nextManifestPath = prevManifestPath;
+
+        ks.kuduSync(from, to, nextManifestPath, prevManifestPath, true, function (err) {
+            err.should.exist;
+            done();
+        });
+    });
+
     setup(function () {
         // Setting a different test directory per test.
         incrementTestDir();
@@ -230,19 +242,35 @@ function generateFile(path, content) {
 }
 
 function removePath(path) {
-    var stat = fs.statSync(path);
-    if (!stat.isDirectory()) {
-        tryRemoveFile(path);
+    var stat = tryGetFileStat(path);
+    if (stat) {
+        if (!stat.isDirectory()) {
+            tryRemoveFile(path);
+        }
+        else {
+            var files = fs.readdirSync(path);
+            for (var index in files) {
+                var file = files[index];
+                var filePath = pathUtil.join(path, file);
+                removePath(filePath);
+            }
+
+            tryRemoveDir(path);
+        }
     }
-    else {
-        var files = fs.readdirSync(path);
-        for (var index in files) {
-            var file = files[index];
-            var filePath = pathUtil.join(path, file);
-            removePath(filePath);
+}
+
+function tryGetFileStat(path) {
+    try {
+        return fs.statSync(path);
+    }
+    catch (e) {
+        if (e.errno == 34) {
+            // Return null if path doesn't exist
+            return null;
         }
 
-        tryRemoveDir(path);
+        throw e;
     }
 }
 
