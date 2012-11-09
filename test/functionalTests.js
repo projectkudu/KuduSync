@@ -1,7 +1,5 @@
 // Functional tests using mocha and should.
 
-var testFlag = true;
-
 // The tested module
 var ks = require("../bin/kuduSync.js");
 

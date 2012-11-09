@@ -23,3 +23,5 @@ function attempt(action: (callback: (err) => void) => void, callback: (err) => v
         callback(err);
     });
 }
+
+exports.attempt = attempt;

@@ -36,6 +36,7 @@ function attempt(action, callback, retries, delayBeforeRetry, currentTry) {
         callback(err);
     });
 }
+exports.attempt = attempt;
 var FileInfoBase = (function () {
     function FileInfoBase(path) {
         Ensure.argNotNull(path, "path");
