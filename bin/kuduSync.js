@@ -15,6 +15,27 @@ var Ensure;
     Ensure.argNotNull = argNotNull;
 })(Ensure || (Ensure = {}));
 
+var DefaultRetries = 3;
+var DefaultDelayBeforeRetry = 250;
+function attempt(action, callback, retries, delayBeforeRetry, currentTry) {
+    if (typeof retries === "undefined") { retries = DefaultRetries; }
+    if (typeof delayBeforeRetry === "undefined") { delayBeforeRetry = DefaultDelayBeforeRetry; }
+    if (typeof currentTry === "undefined") { currentTry = 1; }
+    Ensure.argNotNull(action, "action");
+    Ensure.argNotNull(callback, "callback");
+    action(function (err) {
+        if(err && retries >= currentTry) {
+            setTimeout(function () {
+                return attempt(action, callback, retries, delayBeforeRetry, currentTry + 1);
+            }, delayBeforeRetry);
+            return;
+        }
+        if(err) {
+            log("Error: Failed operation after " + retries + " retries.");
+        }
+        callback(err);
+    });
+}
 var FileInfoBase = (function () {
     function FileInfoBase(path) {
         Ensure.argNotNull(path, "path");
@@ -67,7 +88,9 @@ var DirectoryInfo = (function (_super) {
                     callback(err);
                     return;
                 }
-                fs.mkdir(_this.path(), callback);
+                attempt(function (attemptCallback) {
+                    return fs.mkdir(_this.path(), attemptCallback);
+                }, callback);
             });
             return;
         }
@@ -200,14 +223,16 @@ function copyFile(fromFile, toFilePath, whatIf, callback) {
     Ensure.argNotNull(toFilePath, "toFilePath");
     Ensure.argNotNull(callback, "callback");
     log("Copy file from: " + fromFile.path() + " to: " + toFilePath);
-    try  {
-        if(!whatIf) {
-            fs.createReadStream(fromFile.path()).pipe(fs.createWriteStream(toFilePath));
+    attempt(function (attemptCallback) {
+        try  {
+            if(!whatIf) {
+                fs.createReadStream(fromFile.path()).pipe(fs.createWriteStream(toFilePath));
+            }
+            attemptCallback(null);
+        } catch (err) {
+            attemptCallback(err);
         }
-        callback(null);
-    } catch (err) {
-        callback(err);
-    }
+    }, callback);
 }
 function deleteFile(file, whatIf, callback) {
     Ensure.argNotNull(file, "file");
@@ -215,7 +240,9 @@ function deleteFile(file, whatIf, callback) {
     var path = file.path();
     log("Deleting file: " + path);
     if(!whatIf) {
-        fs.unlink(path, callback);
+        attempt(function (attemptCallback) {
+            return fs.unlink(path, attemptCallback);
+        }, callback);
         return;
     }
     callback(null);
@@ -243,7 +270,9 @@ function deleteDirectoryRecursive(directory, whatIf, callback) {
                 return;
             }
             if(!whatIf) {
-                fs.rmdir(path, callback);
+                attempt(function (attemptCallback) {
+                    return fs.rmdir(path, attemptCallback);
+                }, callback);
                 return;
             }
             callback(null);

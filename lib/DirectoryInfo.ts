@@ -23,7 +23,9 @@ class DirectoryInfo extends FileInfoBase {
                     return;
                 }
 
-                fs.mkdir(this.path(), callback);
+                attempt(
+                    (attemptCallback) => fs.mkdir(this.path(), attemptCallback),
+                    callback);
             });
             return;
         }
@@ -42,6 +44,7 @@ class DirectoryInfo extends FileInfoBase {
             var fileInfos = new FileInfo[];
             var directoryInfos = new DirectoryInfo[];
 
+            // TODO: Add retry here.
             var files = fs.readdirSync(this.path());
             files.forEach(
                 function (fileName: string) {

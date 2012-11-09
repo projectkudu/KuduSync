@@ -1,4 +1,4 @@
-///<reference path='ensure.ts'/>
+///<reference path='attempt.ts'/>
 
 class FileInfoBase {
     private _name: string;

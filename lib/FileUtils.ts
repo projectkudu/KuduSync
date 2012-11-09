@@ -45,16 +45,18 @@ function copyFile(fromFile: FileInfo, toFilePath: string, whatIf: bool, callback
 
     log("Copy file from: " + fromFile.path() + " to: " + toFilePath);
 
-    try {
-        if (!whatIf) {
-            fs.createReadStream(fromFile.path()).pipe(fs.createWriteStream(toFilePath));
-        }
+    attempt((attemptCallback) => {
+        try {
+            if (!whatIf) {
+                fs.createReadStream(fromFile.path()).pipe(fs.createWriteStream(toFilePath));
+            }
 
-        callback(null);
-    }
-    catch (err) {
-        callback(err);
-    }
+            attemptCallback(null);
+        }
+        catch (err) {
+            attemptCallback(err);
+        }
+    }, callback);
 }
 
 function deleteFile(file: FileInfo, whatIf: bool, callback: (err) => void) {
@@ -66,7 +68,10 @@ function deleteFile(file: FileInfo, whatIf: bool, callback: (err) => void) {
     log("Deleting file: " + path);
 
     if (!whatIf) {
-        fs.unlink(path, callback);
+        attempt(
+            (attemptCallback) => fs.unlink(path, attemptCallback),
+            callback);
+
         return;
     }
 
@@ -111,7 +116,9 @@ function deleteDirectoryRecursive(directory: DirectoryInfo, whatIf: bool, callba
 
                     // Delete current directory
                     if (!whatIf) {
-                        fs.rmdir(path, callback);
+                        attempt(
+                            (attemptCallback) => fs.rmdir(path, attemptCallback),
+                            callback);
                         return;
                     }
 
