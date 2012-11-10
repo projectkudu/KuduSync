@@ -52,10 +52,14 @@ class DirectoryInfo extends FileInfoBase {
                     var stat = fs.statSync(path);
 
                     if (stat.isDirectory()) {
+                        // Store both as mapping as an array
                         directoryInfos[fileName] = new DirectoryInfo(path);
+                        directoryInfos.push(directoryInfos[fileName]);
                     }
                     else {
+                        // Store both as mapping as an array
                         fileInfos[fileName] = new FileInfo(path, stat.mtime);
+                        fileInfos.push(fileInfos[fileName]);
                     }
                 }
             );

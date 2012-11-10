@@ -111,8 +111,10 @@ var DirectoryInfo = (function (_super) {
                 var stat = fs.statSync(path);
                 if(stat.isDirectory()) {
                     directoryInfos[fileName] = new DirectoryInfo(path);
+                    directoryInfos.push(directoryInfos[fileName]);
                 } else {
                     fileInfos[fileName] = new FileInfo(path, stat.mtime);
+                    fileInfos.push(fileInfos[fileName]);
                 }
             });
             this._files = fileInfos;

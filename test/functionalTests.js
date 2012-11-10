@@ -131,8 +131,13 @@ function runKuduSyncTestScenario(updatedFiles, expectedFiles, callback, whatIf) 
 
         // Small timeout to make sure files were persisted in file system.
         setTimeout(function () {
-            testFilesShouldBeEqual(expectedFiles);
-            callback();
+            try {
+                testFilesShouldBeEqual(expectedFiles);
+                callback();
+            }
+            catch (err) {
+                callback(err);
+            }
         }, 100);
     });
 }
@@ -213,9 +218,8 @@ function filesShouldBeEqual(fromPath, toPath, fileName) {
     if (fs.existsSync(fromPath)) {
         expectedContent = fs.readFileSync(fromPath, 'utf8');
     }
-    else {
-        fileShouldExist(toPath, expectedContent);
-    }
+
+    fileShouldExist(toPath, expectedContent);
 }
 
 function fileShouldExist(path, expectedContent) {
