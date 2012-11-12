@@ -10,44 +10,40 @@ class Manifest {
         this._isEmpty = true;
     }
 
-    static load(manifestPath: string, callback: (err, manifest) => void) {
+    static load(manifestPath: string) {
         var manifest = new Manifest();
 
         if (manifestPath == null) {
-            callback(null, manifest);
-            return;
+            return Q.resolve(manifest);
         }
-
-        fs.readFile(manifestPath, 'utf8', (err, content) => {
-            if (err) {
+        
+        return Q.ncall(fs.readFile, fs, manifestPath, 'utf8').then(
+            function(content?) {
+                var filePaths = content.split("\n");
+                var files = new string[];
+                filePaths.forEach(
+                    function (filePath) {
+                        var file = filePath.trim();
+                        if (file != "") {
+                            files[file] = file;
+                            manifest._isEmpty = false;
+                        }
+                    }
+                );
+                return Q.resolve(manifest);
+            },
+            function(err?) {
                 // If failed on file not found (34), return an empty manifest
                 if (err.errno == 34) {
-                    callback(null, manifest)
+                    return Q.resolve(manifest);
                 }
                 else {
-                    callback(err, null);
+                    return Q.reject(err);
                 }
-
-                return;
-            }
-
-            var filePaths = content.split("\n");
-            var files = new string[];
-            filePaths.forEach(
-                function (filePath) {
-                    var file = filePath.trim();
-                    if (file != "") {
-                        files[file] = file;
-                        manifest._isEmpty = false;
-                    }
-                }
-            );
-
-            callback(null, manifest);
-        });
+            });
     }
 
-    static save(manifest: Manifest, manifestPath: string, callback: (err) => void) {
+    static save(manifest: Manifest, manifestPath: string) {
         Ensure.argNotNull(manifest, "manifest");
         Ensure.argNotNull(manifestPath, "manifestPath");
 
@@ -61,8 +57,7 @@ class Manifest {
         }
 
         var manifestFileContent = filesForOutput.join("\n");
-
-        fs.writeFile(manifestPath, manifestFileContent, 'utf8', callback);
+        return Q.ncall(fs.writeFile, fs, manifestPath, manifestFileContent, 'utf8');
     }
 
     isPathInManifest(path: string, rootPath: string) {
