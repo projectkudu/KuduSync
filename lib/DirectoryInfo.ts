@@ -15,22 +15,14 @@ class DirectoryInfo extends FileInfoBase {
         return this.name().indexOf(".git") == 0;
     }
 
-    ensureCreated(callback: (err) => void) {
+    ensureCreated() : JQueryPromise {
         if (!this.exists()) {
-            this.parent().ensureCreated((err) => {
-                if (err) {
-                    callback(err);
-                    return;
-                }
-
-                attempt(
-                    (attemptCallback) => fs.mkdir(this.path(), attemptCallback),
-                    callback);
-            });
-            return;
+            return this.parent().ensureCreated().pipe(() => 
+                Utils.attempt(
+                    (attemptCallback) => fs.mkdir(this.path(), attemptCallback));
+                );
         }
-
-        callback(null);
+        return Utils.Resolved();
     }
 
     parent(): DirectoryInfo {

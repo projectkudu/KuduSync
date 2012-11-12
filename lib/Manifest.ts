@@ -10,49 +10,52 @@ class Manifest {
         this._isEmpty = true;
     }
 
-    static load(manifestPath: string, callback: (err, manifest) => void) {
-        var manifest = new Manifest();
+    static load(manifestPath: string) {
+        var manifest = new Manifest(),
+            deferred = jQuery.Deferred();
 
         if (manifestPath == null) {
-            callback(null, manifest);
-            return;
+            deferred.resolveWith(null, [manifest]);
+        }
+        else {
+            fs.readFile(manifestPath, 'utf8', (err, content) => {
+                if (err) {
+                    // If failed on file not found (34), return an empty manifest
+                    if (err.errno == 34) {
+                        deferred.resolveWith(null, [manifest]);
+                    }
+                    else {
+                        deferred.rejectWith(null, [err]);
+                    }
+                    return;
+                }
+
+                var filePaths = content.split("\n");
+                var files = new string[];
+                filePaths.forEach(
+                    function (filePath) {
+                        var file = filePath.trim();
+                        if (file != "") {
+                            files[file] = file;
+                            manifest._isEmpty = false;
+                        }
+                    }
+                );
+
+                deferred.resolveWith(null, [manifest]);
+            });
         }
 
-        fs.readFile(manifestPath, 'utf8', (err, content) => {
-            if (err) {
-                // If failed on file not found (34), return an empty manifest
-                if (err.errno == 34) {
-                    callback(null, manifest)
-                }
-                else {
-                    callback(err, null);
-                }
-
-                return;
-            }
-
-            var filePaths = content.split("\n");
-            var files = new string[];
-            filePaths.forEach(
-                function (filePath) {
-                    var file = filePath.trim();
-                    if (file != "") {
-                        files[file] = file;
-                        manifest._isEmpty = false;
-                    }
-                }
-            );
-
-            callback(null, manifest);
-        });
+        return deferred.promise();
     }
 
-    static save(manifest: Manifest, manifestPath: string, callback: (err) => void) {
+    static save(manifest: Manifest, manifestPath: string) {
         Ensure.argNotNull(manifest, "manifest");
         Ensure.argNotNull(manifestPath, "manifestPath");
 
         var manifestFileContent = "";
         var filesForOutput = new string[];
+        var deferred = jQuery.Deferred();
 
         var i = 0;
         for (var file in manifest._files) {
@@ -62,7 +65,15 @@ class Manifest {
 
         var manifestFileContent = filesForOutput.join("\n");
 
-        fs.writeFile(manifestPath, manifestFileContent, 'utf8', callback);
+        fs.writeFile(manifestPath, manifestFileContent, 'utf8', (err) => {
+            if (err) {
+                deferred.rejectWith(null, err);
+            } 
+            else {
+                deferred.resolve();
+            }
+        });
+        return deferred.promise();
     }
 
     isPathInManifest(path: string, rootPath: string) {

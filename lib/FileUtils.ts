@@ -1,11 +1,10 @@
 ///<reference path='directoryInfo.ts'/>
 ///<reference path='manifest.ts'/>
 
-function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, previousManifestPath: string, whatIf: bool, callback: (err) => void) {
+function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, previousManifestPath: string, whatIf: bool) : JQueryPromise {
     Ensure.argNotNull(fromPath, "fromPath");
     Ensure.argNotNull(toPath, "toPath");
     Ensure.argNotNull(nextManifestPath, "nextManifestPath");
-    Ensure.argNotNull(callback, "callback");
 
     var from = new DirectoryInfo(fromPath);
     var to = new DirectoryInfo(toPath);
@@ -14,38 +13,22 @@ function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, pr
 
     log("Kudu sync from: " + from.path() + " to: " + to.path());
 
-    Manifest.load(previousManifestPath, (err, manifest) => {
-        if (err) {
-            callback(err);
-            return;
-        }
-
-        kuduSyncDirectory(from, to, from.path(), to.path(), manifest, nextManifest, whatIf, (innerErr) => {
-            if (innerErr) {
-                callback(innerErr);
-                return;
-            }
-
-            if (!whatIf) {
-                Manifest.save(nextManifest, nextManifestPath, callback);
-                return;
-            }
-
-            callback(null);
-        });
-    });
+    return Manifest.load(previousManifestPath)
+                         .pipe((manifest) => {
+                             return kuduSyncDirectory(from, to, from.path(), to.path(), manifest, nextManifest, whatIf);
+                         })
+                         .pipe(() => Manifest.save(nextManifest, nextManifestPath));
 }
 
 exports.kuduSync = kuduSync;
 
-function copyFile(fromFile: FileInfo, toFilePath: string, whatIf: bool, callback: (err) => void) {
+function copyFile(fromFile: FileInfo, toFilePath: string, whatIf: bool) : JQueryPromise {
     Ensure.argNotNull(fromFile, "fromFile");
     Ensure.argNotNull(toFilePath, "toFilePath");
-    Ensure.argNotNull(callback, "callback");
 
     log("Copy file from: " + fromFile.path() + " to: " + toFilePath);
 
-    attempt((attemptCallback) => {
+    return Utils.attempt((attemptCallback) => {
         try {
             if (!whatIf) {
                 fs.createReadStream(fromFile.path()).pipe(fs.createWriteStream(toFilePath));
@@ -56,31 +39,26 @@ function copyFile(fromFile: FileInfo, toFilePath: string, whatIf: bool, callback
         catch (err) {
             attemptCallback(err);
         }
-    }, callback);
+    });
 }
 
-function deleteFile(file: FileInfo, whatIf: bool, callback: (err) => void) {
+function deleteFile(file: FileInfo, whatIf: bool) : JQueryPromise {
     Ensure.argNotNull(file, "file");
-    Ensure.argNotNull(callback, "callback");
 
     var path = file.path();
 
     log("Deleting file: " + path);
 
     if (!whatIf) {
-        attempt(
-            (attemptCallback) => fs.unlink(path, attemptCallback),
-            callback);
-
-        return;
+        return Utils.attempt(
+            (attemptCallback) => fs.unlink(path, attemptCallback));
     }
-
-    callback(null);
+    
+    return jQuery.Deferred().resolve().promise();
 }
 
-function deleteDirectoryRecursive(directory: DirectoryInfo, whatIf: bool, callback: (err) => void) {
+function deleteDirectoryRecursive(directory: DirectoryInfo, whatIf: bool) {
     Ensure.argNotNull(directory, "directory");
-    Ensure.argNotNull(callback, "callback");
 
     var path = directory.path();
     log("Deleting directory: " + path);
@@ -89,59 +67,22 @@ function deleteDirectoryRecursive(directory: DirectoryInfo, whatIf: bool, callba
     var subDirectories = directory.subDirectories();
 
     // Delete all files under this directory
-    async.forEach(
-        files,
-        (file, fileCallback) => {
-            deleteFile(file, whatIf, fileCallback);
-        },
-        (forEachErr) => {
-            if (forEachErr) {
-                callback(forEachErr);
-                return;
-            }
-
-            // Delete all subdirectories recirsively
-            async.forEach(
-                subDirectories,
-                (subDirectory, subDirectoryCallback) => {
-                    // HACK: Without this setter, typescript compiler fails to compile this with the error: RangeError: Maximum call stack size exceeded
-                    var __delDirRecursive: any = deleteDirectoryRecursive;
-                    __delDirRecursive(subDirectory, whatIf, subDirectoryCallback);
-                },
-                (innerForEachErr) => {
-                    if (innerForEachErr) {
-                        callback(innerForEachErr);
-                        return;
-                    }
-
-                    // Delete current directory
-                    if (!whatIf) {
-                        attempt(
-                            (attemptCallback) => fs.rmdir(path, attemptCallback),
-                            callback);
-                        return;
-                    }
-
-                    callback(null);
-                }
-            );
-        }
-    );
+    return jQuery.when(Utils.map(files, (file) => deleteFile(file, whatIf)))
+                       .pipe(() => jQuery.when(Utils.map(subDirectories, (subDir) => deleteDirectoryRecursive(subDir, whatIf))));
 }
 
-function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath: string, toRootPath: string, manifest: Manifest, outManifest: Manifest, whatIf: bool, callback: (err) => void) {
+function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath: string, toRootPath: string, manifest: Manifest, outManifest: Manifest, whatIf: bool) {
     Ensure.argNotNull(from, "from");
     Ensure.argNotNull(to, "to");
     Ensure.argNotNull(fromRootPath, "fromRootPath");
     Ensure.argNotNull(toRootPath, "toRootPath");
     Ensure.argNotNull(manifest, "manifest");
     Ensure.argNotNull(outManifest, "outManifest");
-    Ensure.argNotNull(callback, "callback");
 
     // TODO: Generalize files to ignore
     if (from.isSourceControl()) {
         // No need to copy the source control directory (.git).
-        callback(null);
+        Utils.Resolved();
         return;
     }
 
@@ -151,56 +92,45 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
     var toSubDirectories: DirectoryInfo[];
 
     // Do the following actions one after the other (serialized)
-    async.series([
-        (seriesCallback) => {
+    Utils.serialize(
+        () => {
             if(!whatIf) {
-                to.ensureCreated(seriesCallback);
-                return;
+                return to.ensureCreated();
             }
-
-            seriesCallback(null);
+            return Utils.Resolved();
         },
 
-        (seriesCallback) => {
-            try {
-                fromFiles = from.files();
-                toFiles = getFilesConsiderWhatIf(to, whatIf);
-                fromSubDirectories = from.subDirectories();
-                toSubDirectories = getSubDirectoriesConsiderWhatIf(to, whatIf);
-
-                seriesCallback(null);
-            }
-            catch (err) {
-                seriesCallback(err);
-            }
+        () => {
+            fromFiles = from.files();
+            toFiles = getFilesConsiderWhatIf(to, whatIf);
+            fromSubDirectories = from.subDirectories();
+            toSubDirectories = getSubDirectoriesConsiderWhatIf(to, whatIf);
+            return Utils.Resolved;
         },
 
-        (seriesCallback) => {
+        () => {
             // If the file doesn't exist in the source, only delete if:
             // 1. We have no previous directory
             // 2. We have a previous directory and the file exists there
-            async.forEach(
+            return jQuery.when(Utils.map(
                 toFiles,
-                (toFile: FileInfo, fileCallback) => {
+                (toFile: FileInfo) => {
                     // TODO: handle case sensitivity
                     if (!fromFiles[toFile.name()]) {
                         if (manifest.isEmpty() || manifest.isPathInManifest(toFile.path(), toRootPath)) {
-                            deleteFile(toFile, whatIf, fileCallback);
-                            return;
+                            return deleteFile(toFile, whatIf);
                         }
                     }
-
-                    fileCallback();
-                },
-                seriesCallback
-            );
+                    return Utils.Resolved;
+                }
+            ));
         },
 
-        (seriesCallback) => {
+        () => {
             // Copy files
-            async.forEach(
+            return jQuery.when(Utils.map(
                 fromFiles,
-                (fromFile: FileInfo, fileCallback) => {
+                (fromFile: FileInfo) => {
                     outManifest.addFileToManifest(fromFile.path(), fromRootPath);
 
                     // TODO: Skip deployment files
@@ -210,57 +140,49 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                     var toFile = toFiles[fromFile.name()];
 
                     if (toFile == null || fromFile.modifiedTime() > toFile.modifiedTime()) {
-                        copyFile(fromFile, pathUtil.join(to.path(), fromFile.name()), whatIf, fileCallback);
-                        return;
+                        return copyFile(fromFile, pathUtil.join(to.path(), fromFile.name()), whatIf);
                     }
-
-                    fileCallback();
-                },
-                seriesCallback
-            );
+                    return Utils.Resolved;
+                }
+            ));
         },
 
-        (seriesCallback) => {
-            async.forEach(
+        () => {
+            return jQuery.when(Utils.map(
                 toSubDirectories,
-                (toSubDirectory: DirectoryInfo, directoryCallback) => {
+                (toSubDirectory: DirectoryInfo) => {
                     // If the file doesn't exist in the source, only delete if:
                     // 1. We have no previous directory
                     // 2. We have a previous directory and the file exists there
                     if (!fromSubDirectories[toSubDirectory.name()]) {
                         if (manifest.isEmpty() || manifest.isPathInManifest(toSubDirectory.path(), toRootPath)) {
-                            deleteDirectoryRecursive(toSubDirectory, whatIf, directoryCallback);
-                            return;
+                            return deleteDirectoryRecursive(toSubDirectory, whatIf);
                         }
                     }
-
-                    directoryCallback();
-                },
-                seriesCallback
-            );
+                    return Utils.Resolved;
+                }
+            ));
         },
 
-        (seriesCallback) => {
+        () => {
             // Copy directories
-            async.forEach(
+            return jQuery.when(Utils.map(
                 fromSubDirectories,
-                (fromSubDirectory: DirectoryInfo, directoryCallback) => {
+                (fromSubDirectory: DirectoryInfo) => {
                     outManifest.addFileToManifest(fromSubDirectory.path(), fromRootPath);
 
                     var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()));
-                    kuduSyncDirectory(
+                    return kuduSyncDirectory(
                         fromSubDirectory,
                         toSubDirectory,
                         fromRootPath,
                         toRootPath,
                         manifest,
                         outManifest,
-                        whatIf,
-                        directoryCallback);
-                },
-                seriesCallback
-            );
-        }], callback);
+                        whatIf);
+                }
+            ));
+        });
 }
 
 function getFilesConsiderWhatIf(dir: DirectoryInfo, whatIf: bool): FileInfo[] {
