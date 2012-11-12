@@ -1,10 +1,8 @@
 ///<reference path='..\typings\node.d.ts'/>
-///<reference path='..\typings\async.d.ts'/>
 ///<reference path='..\typings\jquery-deferred.d.ts'/>
 
 var fs = require('fs');
 var pathUtil = require('path');
-var async = require('async');
 var jQuery = require('jquery-deferred');
 
 var log = console.log;
