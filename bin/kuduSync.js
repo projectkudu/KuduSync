@@ -105,18 +105,20 @@ var DirectoryInfo = (function (_super) {
         if(this._files === null || this._directories === null) {
             var fileInfos = new Array();
             var directoryInfos = new Array();
-            var files = fs.readdirSync(this.path());
-            files.forEach(function (fileName) {
-                var path = pathUtil.join(self.path(), fileName);
-                var stat = fs.statSync(path);
-                if(stat.isDirectory()) {
-                    directoryInfos[fileName] = new DirectoryInfo(path);
-                    directoryInfos.push(directoryInfos[fileName]);
-                } else {
-                    fileInfos[fileName] = new FileInfo(path, stat.mtime);
-                    fileInfos.push(fileInfos[fileName]);
-                }
-            });
+            if(this.exists()) {
+                var files = fs.readdirSync(this.path());
+                files.forEach(function (fileName) {
+                    var path = pathUtil.join(self.path(), fileName);
+                    var stat = fs.statSync(path);
+                    if(stat.isDirectory()) {
+                        directoryInfos[fileName] = new DirectoryInfo(path);
+                        directoryInfos.push(directoryInfos[fileName]);
+                    } else {
+                        fileInfos[fileName] = new FileInfo(path, stat.mtime);
+                        fileInfos.push(fileInfos[fileName]);
+                    }
+                });
+            }
             this._files = fileInfos;
             this._directories = directoryInfos;
         }
@@ -290,73 +292,66 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
     Ensure.argNotNull(manifest, "manifest");
     Ensure.argNotNull(outManifest, "outManifest");
     Ensure.argNotNull(callback, "callback");
-    if(from.isSourceControl()) {
-        callback(null);
-        return;
-    }
-    var fromFiles;
-    var toFiles;
-    var fromSubDirectories;
-    var toSubDirectories;
-    async.series([
-        function (seriesCallback) {
-            if(!whatIf) {
-                to.ensureCreated(seriesCallback);
-                return;
-            }
-            seriesCallback(null);
-        }, 
-        function (seriesCallback) {
-            try  {
-                fromFiles = from.files();
-                toFiles = getFilesConsiderWhatIf(to, whatIf);
-                fromSubDirectories = from.subDirectories();
-                toSubDirectories = getSubDirectoriesConsiderWhatIf(to, whatIf);
-                seriesCallback(null);
-            } catch (err) {
-                seriesCallback(err);
-            }
-        }, 
-        function (seriesCallback) {
-            async.forEach(toFiles, function (toFile, fileCallback) {
-                if(!fromFiles[toFile.name()]) {
-                    if(manifest.isEmpty() || manifest.isPathInManifest(toFile.path(), toRootPath)) {
-                        deleteFile(toFile, whatIf, fileCallback);
-                        return;
-                    }
-                }
-                fileCallback();
-            }, seriesCallback);
-        }, 
-        function (seriesCallback) {
-            async.forEach(fromFiles, function (fromFile, fileCallback) {
-                outManifest.addFileToManifest(fromFile.path(), fromRootPath);
-                var toFile = toFiles[fromFile.name()];
-                if(toFile == null || fromFile.modifiedTime() > toFile.modifiedTime()) {
-                    copyFile(fromFile, pathUtil.join(to.path(), fromFile.name()), whatIf, fileCallback);
+    try  {
+        if(from.isSourceControl() || !pathUtil.relative(from.path(), toRootPath)) {
+            callback(null);
+            return;
+        }
+        var fromFiles = from.files();
+        var toFiles = getFilesConsiderWhatIf(to, whatIf);
+        var fromSubDirectories = from.subDirectories();
+        var toSubDirectories = getSubDirectoriesConsiderWhatIf(to, whatIf);
+        async.series([
+            function (seriesCallback) {
+                if(!whatIf) {
+                    to.ensureCreated(seriesCallback);
                     return;
                 }
-                fileCallback();
-            }, seriesCallback);
-        }, 
-        function (seriesCallback) {
-            async.forEach(toSubDirectories, function (toSubDirectory, directoryCallback) {
-                if(!fromSubDirectories[toSubDirectory.name()]) {
-                    if(manifest.isEmpty() || manifest.isPathInManifest(toSubDirectory.path(), toRootPath)) {
-                        deleteDirectoryRecursive(toSubDirectory, whatIf, directoryCallback);
+                seriesCallback(null);
+            }, 
+            function (seriesCallback) {
+                async.forEach(toFiles, function (toFile, fileCallback) {
+                    if(!fromFiles[toFile.name()]) {
+                        if(manifest.isEmpty() || manifest.isPathInManifest(toFile.path(), toRootPath)) {
+                            deleteFile(toFile, whatIf, fileCallback);
+                            return;
+                        }
+                    }
+                    fileCallback();
+                }, seriesCallback);
+            }, 
+            function (seriesCallback) {
+                async.forEach(fromFiles, function (fromFile, fileCallback) {
+                    outManifest.addFileToManifest(fromFile.path(), fromRootPath);
+                    var toFile = toFiles[fromFile.name()];
+                    if(toFile == null || fromFile.modifiedTime() > toFile.modifiedTime()) {
+                        copyFile(fromFile, pathUtil.join(to.path(), fromFile.name()), whatIf, fileCallback);
                         return;
                     }
-                }
-                directoryCallback();
-            }, seriesCallback);
-        }, 
-        function (seriesCallback) {
-            async.forEach(fromSubDirectories, function (fromSubDirectory, directoryCallback) {
-                outManifest.addFileToManifest(fromSubDirectory.path(), fromRootPath);
-                var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()));
-                kuduSyncDirectory(fromSubDirectory, toSubDirectory, fromRootPath, toRootPath, manifest, outManifest, whatIf, directoryCallback);
-            }, seriesCallback);
-        }    ], callback);
+                    fileCallback();
+                }, seriesCallback);
+            }, 
+            function (seriesCallback) {
+                async.forEach(toSubDirectories, function (toSubDirectory, directoryCallback) {
+                    if(!fromSubDirectories[toSubDirectory.name()]) {
+                        if(manifest.isEmpty() || manifest.isPathInManifest(toSubDirectory.path(), toRootPath)) {
+                            deleteDirectoryRecursive(toSubDirectory, whatIf, directoryCallback);
+                            return;
+                        }
+                    }
+                    directoryCallback();
+                }, seriesCallback);
+            }, 
+            function (seriesCallback) {
+                async.forEach(fromSubDirectories, function (fromSubDirectory, directoryCallback) {
+                    outManifest.addFileToManifest(fromSubDirectory.path(), fromRootPath);
+                    var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()));
+                    kuduSyncDirectory(fromSubDirectory, toSubDirectory, fromRootPath, toRootPath, manifest, outManifest, whatIf, directoryCallback);
+                }, seriesCallback);
+            }        ], callback);
+    } catch (err) {
+        callback(err);
+    }
 }
 function getFilesConsiderWhatIf(dir, whatIf) {
     try  {
