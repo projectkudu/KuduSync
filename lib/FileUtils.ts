@@ -130,137 +130,128 @@ function deleteDirectoryRecursive(directory: DirectoryInfo, whatIf: bool, callba
 }
 
 function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath: string, toRootPath: string, manifest: Manifest, outManifest: Manifest, whatIf: bool, callback: (err) => void) {
-    Ensure.argNotNull(from, "from");
-    Ensure.argNotNull(to, "to");
-    Ensure.argNotNull(fromRootPath, "fromRootPath");
-    Ensure.argNotNull(toRootPath, "toRootPath");
-    Ensure.argNotNull(manifest, "manifest");
-    Ensure.argNotNull(outManifest, "outManifest");
-    Ensure.argNotNull(callback, "callback");
+    try {
+        Ensure.argNotNull(from, "from");
+        Ensure.argNotNull(to, "to");
+        Ensure.argNotNull(fromRootPath, "fromRootPath");
+        Ensure.argNotNull(toRootPath, "toRootPath");
+        Ensure.argNotNull(manifest, "manifest");
+        Ensure.argNotNull(outManifest, "outManifest");
+        Ensure.argNotNull(callback, "callback");
 
-    // TODO: Generalize files to ignore
-    if (from.isSourceControl()) {
-        // No need to copy the source control directory (.git).
-        callback(null);
-        return;
-    }
+        // TODO: Generalize files to ignore
+        if (from.isSourceControl()) {
+            // No need to copy the source control directory (.git).
+            callback(null);
+            return;
+        }
 
-    var fromFiles: FileInfo[];
-    var toFiles: FileInfo[];
-    var fromSubDirectories: DirectoryInfo[];
-    var toSubDirectories: DirectoryInfo[];
+        var fromFiles: FileInfo[] = from.files();
+        var toFiles: FileInfo[] = getFilesConsiderWhatIf(to, whatIf);
+        var fromSubDirectories: DirectoryInfo[] = from.subDirectories();
+        var toSubDirectories: DirectoryInfo[] = getSubDirectoriesConsiderWhatIf(to, whatIf);
 
-    // Do the following actions one after the other (serialized)
-    async.series([
-        (seriesCallback) => {
-            if(!whatIf) {
-                to.ensureCreated(seriesCallback);
-                return;
-            }
-
-            seriesCallback(null);
-        },
-
-        (seriesCallback) => {
-            try {
-                fromFiles = from.files();
-                toFiles = getFilesConsiderWhatIf(to, whatIf);
-                fromSubDirectories = from.subDirectories();
-                toSubDirectories = getSubDirectoriesConsiderWhatIf(to, whatIf);
+        // Do the following actions one after the other (serialized)
+        async.series([
+            (seriesCallback) => {
+                if (!whatIf) {
+                    to.ensureCreated(seriesCallback);
+                    return;
+                }
 
                 seriesCallback(null);
-            }
-            catch (err) {
-                seriesCallback(err);
-            }
-        },
+            },
 
-        (seriesCallback) => {
-            // If the file doesn't exist in the source, only delete if:
-            // 1. We have no previous directory
-            // 2. We have a previous directory and the file exists there
-            async.forEach(
-                toFiles,
-                (toFile: FileInfo, fileCallback) => {
-                    // TODO: handle case sensitivity
-                    if (!fromFiles[toFile.name()]) {
-                        if (manifest.isEmpty() || manifest.isPathInManifest(toFile.path(), toRootPath)) {
-                            deleteFile(toFile, whatIf, fileCallback);
+            (seriesCallback) => {
+                // If the file doesn't exist in the source, only delete if:
+                // 1. We have no previous directory
+                // 2. We have a previous directory and the file exists there
+                async.forEach(
+                    toFiles,
+                    (toFile: FileInfo, fileCallback) => {
+                        // TODO: handle case sensitivity
+                        if (!fromFiles[toFile.name()]) {
+                            if (manifest.isEmpty() || manifest.isPathInManifest(toFile.path(), toRootPath)) {
+                                deleteFile(toFile, whatIf, fileCallback);
+                                return;
+                            }
+                        }
+
+                        fileCallback();
+                    },
+                    seriesCallback
+                );
+            },
+
+            (seriesCallback) => {
+                // Copy files
+                async.forEach(
+                    fromFiles,
+                    (fromFile: FileInfo, fileCallback) => {
+                        outManifest.addFileToManifest(fromFile.path(), fromRootPath);
+
+                        // TODO: Skip deployment files
+
+                        // if the file exists in the destination then only copy it again if it's
+                        // last write time is different than the same file in the source (only if it changed)
+                        var toFile = toFiles[fromFile.name()];
+
+                        if (toFile == null || fromFile.modifiedTime() > toFile.modifiedTime()) {
+                            copyFile(fromFile, pathUtil.join(to.path(), fromFile.name()), whatIf, fileCallback);
                             return;
                         }
-                    }
 
-                    fileCallback();
-                },
-                seriesCallback
-            );
-        },
+                        fileCallback();
+                    },
+                    seriesCallback
+                );
+            },
 
-        (seriesCallback) => {
-            // Copy files
-            async.forEach(
-                fromFiles,
-                (fromFile: FileInfo, fileCallback) => {
-                    outManifest.addFileToManifest(fromFile.path(), fromRootPath);
-
-                    // TODO: Skip deployment files
-
-                    // if the file exists in the destination then only copy it again if it's
-                    // last write time is different than the same file in the source (only if it changed)
-                    var toFile = toFiles[fromFile.name()];
-
-                    if (toFile == null || fromFile.modifiedTime() > toFile.modifiedTime()) {
-                        copyFile(fromFile, pathUtil.join(to.path(), fromFile.name()), whatIf, fileCallback);
-                        return;
-                    }
-
-                    fileCallback();
-                },
-                seriesCallback
-            );
-        },
-
-        (seriesCallback) => {
-            async.forEach(
-                toSubDirectories,
-                (toSubDirectory: DirectoryInfo, directoryCallback) => {
-                    // If the file doesn't exist in the source, only delete if:
-                    // 1. We have no previous directory
-                    // 2. We have a previous directory and the file exists there
-                    if (!fromSubDirectories[toSubDirectory.name()]) {
-                        if (manifest.isEmpty() || manifest.isPathInManifest(toSubDirectory.path(), toRootPath)) {
-                            deleteDirectoryRecursive(toSubDirectory, whatIf, directoryCallback);
-                            return;
+            (seriesCallback) => {
+                async.forEach(
+                    toSubDirectories,
+                    (toSubDirectory: DirectoryInfo, directoryCallback) => {
+                        // If the file doesn't exist in the source, only delete if:
+                        // 1. We have no previous directory
+                        // 2. We have a previous directory and the file exists there
+                        if (!fromSubDirectories[toSubDirectory.name()]) {
+                            if (manifest.isEmpty() || manifest.isPathInManifest(toSubDirectory.path(), toRootPath)) {
+                                deleteDirectoryRecursive(toSubDirectory, whatIf, directoryCallback);
+                                return;
+                            }
                         }
-                    }
 
-                    directoryCallback();
-                },
-                seriesCallback
-            );
-        },
+                        directoryCallback();
+                    },
+                    seriesCallback
+                );
+            },
 
-        (seriesCallback) => {
-            // Copy directories
-            async.forEach(
-                fromSubDirectories,
-                (fromSubDirectory: DirectoryInfo, directoryCallback) => {
-                    outManifest.addFileToManifest(fromSubDirectory.path(), fromRootPath);
+            (seriesCallback) => {
+                // Copy directories
+                async.forEach(
+                    fromSubDirectories,
+                    (fromSubDirectory: DirectoryInfo, directoryCallback) => {
+                        outManifest.addFileToManifest(fromSubDirectory.path(), fromRootPath);
 
-                    var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()));
-                    kuduSyncDirectory(
-                        fromSubDirectory,
-                        toSubDirectory,
-                        fromRootPath,
-                        toRootPath,
-                        manifest,
-                        outManifest,
-                        whatIf,
-                        directoryCallback);
-                },
-                seriesCallback
-            );
-        }], callback);
+                        var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()));
+                        kuduSyncDirectory(
+                            fromSubDirectory,
+                            toSubDirectory,
+                            fromRootPath,
+                            toRootPath,
+                            manifest,
+                            outManifest,
+                            whatIf,
+                            directoryCallback);
+                    },
+                    seriesCallback
+                );
+            }], callback);
+    }
+    catch (err) {
+        callback(err);
+    }
 }
 
 function getFilesConsiderWhatIf(dir: DirectoryInfo, whatIf: bool): FileInfo[] {
