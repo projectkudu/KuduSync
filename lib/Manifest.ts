@@ -11,25 +11,14 @@ class Manifest {
     }
 
     static load(manifestPath: string) {
-        var manifest = new Manifest(),
-            deferred = jQuery.Deferred();
+        var manifest = new Manifest();
 
         if (manifestPath == null) {
-            deferred.resolveWith(null, [manifest]);
+            return Q.resolve(manifest);
         }
-        else {
-            fs.readFile(manifestPath, 'utf8', (err, content) => {
-                if (err) {
-                    // If failed on file not found (34), return an empty manifest
-                    if (err.errno == 34) {
-                        deferred.resolveWith(null, [manifest]);
-                    }
-                    else {
-                        deferred.rejectWith(null, [err]);
-                    }
-                    return;
-                }
-
+        
+        return Q.ncall(fs.readFile, fs, manifestPath, 'utf8').then(
+            function(content?) {
                 var filePaths = content.split("\n");
                 var files = new string[];
                 filePaths.forEach(
@@ -41,12 +30,17 @@ class Manifest {
                         }
                     }
                 );
-
-                deferred.resolveWith(null, [manifest]);
+                return Q.resolve(manifest);
+            },
+            function(err?) {
+                // If failed on file not found (34), return an empty manifest
+                if (err.errno == 34) {
+                    return Q.resolve(manifest);
+                }
+                else {
+                    return Q.reject(err);
+                }
             });
-        }
-
-        return deferred.promise();
     }
 
     static save(manifest: Manifest, manifestPath: string) {
@@ -55,7 +49,6 @@ class Manifest {
 
         var manifestFileContent = "";
         var filesForOutput = new string[];
-        var deferred = jQuery.Deferred();
 
         var i = 0;
         for (var file in manifest._files) {
@@ -64,16 +57,7 @@ class Manifest {
         }
 
         var manifestFileContent = filesForOutput.join("\n");
-
-        fs.writeFile(manifestPath, manifestFileContent, 'utf8', (err) => {
-            if (err) {
-                deferred.rejectWith(null, err);
-            } 
-            else {
-                deferred.resolve();
-            }
-        });
-        return deferred.promise();
+        return Q.ncall(fs.writeFile, fs, manifestPath, manifestFileContent, 'utf8');
     }
 
     isPathInManifest(path: string, rootPath: string) {

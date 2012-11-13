@@ -1,7 +1,7 @@
 ///<reference path='directoryInfo.ts'/>
 ///<reference path='manifest.ts'/>
 
-function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, previousManifestPath: string, whatIf: bool) : JQueryPromise {
+function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, previousManifestPath: string, whatIf: bool) : Promise {
     Ensure.argNotNull(fromPath, "fromPath");
     Ensure.argNotNull(toPath, "toPath");
     Ensure.argNotNull(nextManifestPath, "nextManifestPath");
@@ -14,35 +14,32 @@ function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, pr
     log("Kudu sync from: " + from.path() + " to: " + to.path());
 
     return Manifest.load(previousManifestPath)
-                         .pipe((manifest) => {
-                             return kuduSyncDirectory(from, to, from.path(), to.path(), manifest, nextManifest, whatIf);
-                         })
-                         .pipe(() => Manifest.save(nextManifest, nextManifestPath));
+                    .then((manifest) => kuduSyncDirectory(from, to, from.path(), to.path(), manifest, nextManifest, whatIf))
+                    .then(() => Manifest.save(nextManifest, nextManifestPath));
 }
 
 exports.kuduSync = kuduSync;
 
-function copyFile(fromFile: FileInfo, toFilePath: string, whatIf: bool) : JQueryPromise {
+function copyFile(fromFile: FileInfo, toFilePath: string, whatIf: bool) : Promise {
     Ensure.argNotNull(fromFile, "fromFile");
     Ensure.argNotNull(toFilePath, "toFilePath");
 
     log("Copy file from: " + fromFile.path() + " to: " + toFilePath);
 
-    return Utils.attempt((attemptCallback) => {
+    return Utils.attempt(() => {
         try {
             if (!whatIf) {
                 fs.createReadStream(fromFile.path()).pipe(fs.createWriteStream(toFilePath));
             }
-
-            attemptCallback(null);
+            return Q.resolve();
         }
         catch (err) {
-            attemptCallback(err);
+            return Q.reject(err);
         }
     });
 }
 
-function deleteFile(file: FileInfo, whatIf: bool) : JQueryPromise {
+function deleteFile(file: FileInfo, whatIf: bool) : Promise {
     Ensure.argNotNull(file, "file");
 
     var path = file.path();
@@ -50,11 +47,10 @@ function deleteFile(file: FileInfo, whatIf: bool) : JQueryPromise {
     log("Deleting file: " + path);
 
     if (!whatIf) {
-        return Utils.attempt(
-            (attemptCallback) => fs.unlink(path, attemptCallback));
+        return Utils.attempt(() => Q.ncall(fs.unlink, fs, path));
     }
     
-    return jQuery.Deferred().resolve().promise();
+    return Q.resolve();
 }
 
 function deleteDirectoryRecursive(directory: DirectoryInfo, whatIf: bool) {
@@ -67,8 +63,15 @@ function deleteDirectoryRecursive(directory: DirectoryInfo, whatIf: bool) {
     var subDirectories = directory.subDirectories();
 
     // Delete all files under this directory
-    return jQuery.when(Utils.map(files, (file) => deleteFile(file, whatIf)))
-                       .pipe(() => jQuery.when(Utils.map(subDirectories, (subDir) => deleteDirectoryRecursive(subDir, whatIf))));
+    return Q.all(Utils.map(files, (file) => deleteFile(file, whatIf)))
+            .then(() => Q.all(Utils.map(subDirectories, (subDir) => deleteDirectoryRecursive(subDir, whatIf))))
+            .then(() => {
+                // Delete current directory
+                  if (!whatIf) {
+                      return Utils.attempt(() => Q.ncall(fs.rmdir, fs, path));
+                  }
+                  return Q.resolve();
+             });
 }
 
 function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath: string, toRootPath: string, manifest: Manifest, outManifest: Manifest, whatIf: bool) {
@@ -82,8 +85,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
     // TODO: Generalize files to ignore
     if (from.isSourceControl()) {
         // No need to copy the source control directory (.git).
-        Utils.Resolved();
-        return;
+        return Q.resolve();
     }
 
     var fromFiles: FileInfo[];
@@ -92,12 +94,12 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
     var toSubDirectories: DirectoryInfo[];
 
     // Do the following actions one after the other (serialized)
-    Utils.serialize(
+    return Utils.serialize(
         () => {
             if(!whatIf) {
                 return to.ensureCreated();
             }
-            return Utils.Resolved();
+            return Q.resolve();
         },
 
         () => {
@@ -105,14 +107,14 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
             toFiles = getFilesConsiderWhatIf(to, whatIf);
             fromSubDirectories = from.subDirectories();
             toSubDirectories = getSubDirectoriesConsiderWhatIf(to, whatIf);
-            return Utils.Resolved;
+            return Q.resolve();
         },
 
         () => {
             // If the file doesn't exist in the source, only delete if:
             // 1. We have no previous directory
             // 2. We have a previous directory and the file exists there
-            return jQuery.when(Utils.map(
+            return Q.all(Utils.map(
                 toFiles,
                 (toFile: FileInfo) => {
                     // TODO: handle case sensitivity
@@ -121,14 +123,14 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                             return deleteFile(toFile, whatIf);
                         }
                     }
-                    return Utils.Resolved;
+                    return Q.resolve();
                 }
             ));
         },
 
         () => {
             // Copy files
-            return jQuery.when(Utils.map(
+            return Q.all(Utils.map(
                 fromFiles,
                 (fromFile: FileInfo) => {
                     outManifest.addFileToManifest(fromFile.path(), fromRootPath);
@@ -142,13 +144,13 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                     if (toFile == null || fromFile.modifiedTime() > toFile.modifiedTime()) {
                         return copyFile(fromFile, pathUtil.join(to.path(), fromFile.name()), whatIf);
                     }
-                    return Utils.Resolved;
+                    return Q.resolve();
                 }
             ));
         },
 
         () => {
-            return jQuery.when(Utils.map(
+            return Q.all(Utils.map(
                 toSubDirectories,
                 (toSubDirectory: DirectoryInfo) => {
                     // If the file doesn't exist in the source, only delete if:
@@ -159,14 +161,14 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                             return deleteDirectoryRecursive(toSubDirectory, whatIf);
                         }
                     }
-                    return Utils.Resolved;
+                    return Q.resolve();
                 }
             ));
         },
 
         () => {
             // Copy directories
-            return jQuery.when(Utils.map(
+            return Q.all(Utils.map(
                 fromSubDirectories,
                 (fromSubDirectory: DirectoryInfo) => {
                     outManifest.addFileToManifest(fromSubDirectory.path(), fromRootPath);

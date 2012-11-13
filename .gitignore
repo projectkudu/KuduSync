@@ -9,5 +9,4 @@ _ReSharper.*/
 node_packages/*
 node_modules/*
 lib/*.js
-bin/*.js
 *.log

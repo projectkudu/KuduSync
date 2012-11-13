@@ -1,9 +1,9 @@
 ///<reference path='..\typings\node.d.ts'/>
-///<reference path='..\typings\jquery-deferred.d.ts'/>
+///<reference path='..\typings\q.d.ts'/>
 
 var fs = require('fs');
 var pathUtil = require('path');
-var jQuery = require('jquery-deferred');
+var Q = require('q');
 
 var log = console.log;
 

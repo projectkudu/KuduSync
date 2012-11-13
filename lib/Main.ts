@@ -42,15 +42,19 @@ function main() {
         toDir,
         nextManifest,
         previousManifest,
-        whatIf).fail(err => {
-            if (err) {
-                // Errors should always be logged
-                console.log("" + err);
-            }
+        whatIf).then(
+            () => {
+                process.exit(0);
+            },
+            function (err?) {
+                if (err) {
+                    // Errors should always be logged
+                    console.log("" + err);
+                }
 
-            // Exit with an error code
-            process.exit(1);
-       });
+                // Exit with an error code
+                process.exit(1);
+            });
 }
 
 exports.main = main;

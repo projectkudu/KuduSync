@@ -45,6 +45,6 @@
   },
   "dependencies": {
     "commander": "~1.0.5",
-    "jquery-deferred": "~0.3"
+    "q": "~0.8.10"
   }
 }
