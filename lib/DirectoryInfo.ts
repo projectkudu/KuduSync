@@ -36,24 +36,26 @@ class DirectoryInfo extends FileInfoBase {
             var directoryInfos = new DirectoryInfo[];
 
             // TODO: Add retry here.
-            var files = fs.readdirSync(this.path());
-            files.forEach(
-                function (fileName: string) {
-                    var path = pathUtil.join(self.path(), fileName);
-                    var stat = fs.statSync(path);
+            if (this.exists()) {
+                var files = fs.readdirSync(this.path());
+                files.forEach(
+                    function (fileName: string) {
+                        var path = pathUtil.join(self.path(), fileName);
+                        var stat = fs.statSync(path);
 
-                    if (stat.isDirectory()) {
-                        // Store both as mapping as an array
-                        directoryInfos[fileName] = new DirectoryInfo(path);
-                        directoryInfos.push(directoryInfos[fileName]);
+                        if (stat.isDirectory()) {
+                            // Store both as mapping as an array
+                            directoryInfos[fileName] = new DirectoryInfo(path);
+                            directoryInfos.push(directoryInfos[fileName]);
+                        }
+                        else {
+                            // Store both as mapping as an array
+                            fileInfos[fileName] = new FileInfo(path, stat.mtime);
+                            fileInfos.push(fileInfos[fileName]);
+                        }
                     }
-                    else {
-                        // Store both as mapping as an array
-                        fileInfos[fileName] = new FileInfo(path, stat.mtime);
-                        fileInfos.push(fileInfos[fileName]);
-                    }
-                }
-            );
+                );
+            }
 
             this._files = fileInfos;
             this._directories = directoryInfos;
