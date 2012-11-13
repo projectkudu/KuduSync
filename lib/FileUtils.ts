@@ -88,8 +88,9 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
 
     try {
         // TODO: Generalize files to ignore
-        if (from.isSourceControl()) {
+        if (from.isSourceControl() || !pathUtil.relative(from.path(), toRootPath)) {
             // No need to copy the source control directory (.git).
+            // Or the destination path itself (if contained within the source directory)
             return Q.resolve();
         }
 

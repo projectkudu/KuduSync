@@ -279,7 +279,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
     Ensure.argNotNull(manifest, "manifest");
     Ensure.argNotNull(outManifest, "outManifest");
     try  {
-        if(from.isSourceControl()) {
+        if(from.isSourceControl() || !pathUtil.relative(from.path(), toRootPath)) {
             return Q.resolve();
         }
         var fromFiles = from.files();
