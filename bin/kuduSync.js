@@ -285,15 +285,15 @@ function deleteDirectoryRecursive(directory, whatIf, callback) {
     });
 }
 function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outManifest, whatIf, callback) {
+    Ensure.argNotNull(from, "from");
+    Ensure.argNotNull(to, "to");
+    Ensure.argNotNull(fromRootPath, "fromRootPath");
+    Ensure.argNotNull(toRootPath, "toRootPath");
+    Ensure.argNotNull(manifest, "manifest");
+    Ensure.argNotNull(outManifest, "outManifest");
+    Ensure.argNotNull(callback, "callback");
     try  {
-        Ensure.argNotNull(from, "from");
-        Ensure.argNotNull(to, "to");
-        Ensure.argNotNull(fromRootPath, "fromRootPath");
-        Ensure.argNotNull(toRootPath, "toRootPath");
-        Ensure.argNotNull(manifest, "manifest");
-        Ensure.argNotNull(outManifest, "outManifest");
-        Ensure.argNotNull(callback, "callback");
-        if(from.isSourceControl()) {
+        if(from.isSourceControl() || !pathUtil.relative(from.path(), toRootPath)) {
             callback(null);
             return;
         }

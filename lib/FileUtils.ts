@@ -130,18 +130,19 @@ function deleteDirectoryRecursive(directory: DirectoryInfo, whatIf: bool, callba
 }
 
 function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath: string, toRootPath: string, manifest: Manifest, outManifest: Manifest, whatIf: bool, callback: (err) => void) {
-    try {
-        Ensure.argNotNull(from, "from");
-        Ensure.argNotNull(to, "to");
-        Ensure.argNotNull(fromRootPath, "fromRootPath");
-        Ensure.argNotNull(toRootPath, "toRootPath");
-        Ensure.argNotNull(manifest, "manifest");
-        Ensure.argNotNull(outManifest, "outManifest");
-        Ensure.argNotNull(callback, "callback");
+    Ensure.argNotNull(from, "from");
+    Ensure.argNotNull(to, "to");
+    Ensure.argNotNull(fromRootPath, "fromRootPath");
+    Ensure.argNotNull(toRootPath, "toRootPath");
+    Ensure.argNotNull(manifest, "manifest");
+    Ensure.argNotNull(outManifest, "outManifest");
+    Ensure.argNotNull(callback, "callback");
 
+    try {
         // TODO: Generalize files to ignore
-        if (from.isSourceControl()) {
+        if (from.isSourceControl() || !pathUtil.relative(from.path(), toRootPath)) {
             // No need to copy the source control directory (.git).
+            // Or the destination path itself (if contained within the source directory)
             callback(null);
             return;
         }
