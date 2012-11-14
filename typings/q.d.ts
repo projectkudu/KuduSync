@@ -22,6 +22,7 @@ interface QStatic {
     delay(action: Function, delay: Number): Promise;
     all(...promises: any[]): Promise;
     ncall(nodeFunction: Function, thisp: any, ...args: any[]);
+    fcall(nodeFunction: Function, thisp?: any, ...args: any[]);
 }
 
 declare var Q: QStatic;

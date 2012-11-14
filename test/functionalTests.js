@@ -99,10 +99,11 @@ suite('Kudu Sync Functional Tests', function () {
         var prevManifestPath = pathUtil.join(baseTestTempDir, testDir, "manifest1");
         var nextManifestPath = prevManifestPath;
 
-        ks.kuduSync(from, to, nextManifestPath, prevManifestPath, true, function (err) {
-            err.should.exist;
-            done();
-        });
+        ks.kuduSync(from, to, nextManifestPath, prevManifestPath, true)
+            .fail(function (err) {
+                err.should.exist;
+                done();
+            });
     });
 
     setup(function () {
@@ -175,7 +176,8 @@ function runKuduSync(prevManifestFile, nextManifestFile, whatIf, callback) {
     var prevManifestPath = pathUtil.join(baseTestTempDir, testDir, prevManifestFile);
     var nextManifestPath = pathUtil.join(baseTestTempDir, testDir, nextManifestFile);
 
-    ks.kuduSync(from, to, nextManifestPath, prevManifestPath, whatIf, callback);
+    ks.kuduSync(from, to, nextManifestPath, prevManifestPath, whatIf)
+      .then(callback, callback);
 }
 
 function generateFromFiles(files) {
