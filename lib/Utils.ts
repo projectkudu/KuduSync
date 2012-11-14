@@ -13,7 +13,7 @@ module Utils {
                 Q.resolve,
                 function(err?) {
                     if (retries >= currentTry++) {
-                        return Q.delay(retryAction, delayBeforeRetry);
+                        return Q.delay(Q.fcall(retryAction), delayBeforeRetry);
                     }
                     else {
                         return Q.reject(err);
@@ -40,4 +40,4 @@ module Utils {
         return result;
     }
 }
-
+exports.Utils = Utils;

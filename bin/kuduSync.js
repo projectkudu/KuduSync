@@ -27,7 +27,7 @@ var Utils;
         var retryAction = function () {
             return action().then(Q.resolve, function (err) {
                 if(retries >= currentTry++) {
-                    return Q.delay(retryAction, delayBeforeRetry);
+                    return Q.delay(Q.fcall(retryAction), delayBeforeRetry);
                 } else {
                     return Q.reject(err);
                 }
@@ -58,6 +58,7 @@ var Utils;
     Utils.serialize = serialize;
 })(Utils || (Utils = {}));
 
+exports.Utils = Utils;
 var FileInfoBase = (function () {
     function FileInfoBase(path) {
         Ensure.argNotNull(path, "path");

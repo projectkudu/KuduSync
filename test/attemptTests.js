@@ -4,95 +4,84 @@
 var ks = require("../bin/kuduSync.js");
 
 var should = require("should");
+var Q = require("Q");
 
 var attempts = 0;
 
 // Tests Suite
 suite('Attempt Function Tests', function () {
     test('Attempt without failing action should be called once', function (done) {
-        ks.attempt(function (callback) {
-            // Do nothing, success
+        ks.Utils.attempt(function () {
+            attempts.should.equal(0);
             attempts++;
-            callback();
-        }, function (err) {
-            // Make sure action was called only once
-            should.not.exist(err);
-            attempts.should.equal(1);
-            done();
-        }, 3, 10);
+            return Q.resolve();
+        }, 3, 10).then(done);
     });
 
-    test('Attempt without failing action should be called once', function (done) {
-        ks.attempt(function (callback) {
+    test('Attempt with failing action should be called once', function (done) {
+        ks.Utils.attempt(function () {
             // Do nothing, success
             attempts++;
 
             if (attempts == 1) {
-                callback(new Error("error"));
-                return;
+                return Q.reject(new Error("error"));
             }
 
-            callback();
-        }, function (err) {
-            should.not.exist(err);
+            return Q.resolve();
+        }, 3, 10).then(function () {
             attempts.should.equal(2);
             done();
-        }, 3, 10);
+        });
     });
 
-    test('Attempt without failing action should be called once', function (done) {
-        ks.attempt(function (callback) {
+    test('Attempt should retry for failing actions', function (done) {
+        ks.Utils.attempt(function () {
             // Do nothing, success
             attempts++;
 
             if (attempts <= 2) {
-                callback(new Error("error"));
-                return;
+                return Q.reject(new Error("error"));
             }
 
-            callback();
-        }, function (err) {
-            should.not.exist(err);
+            return Q.resolve();
+        }, 3, 10).then(function () {
             attempts.should.equal(3);
             done();
-        }, 3, 10);
+        });
     });
 
-    test('Attempt without failing action should be called once', function (done) {
-        ks.attempt(function (callback) {
+    test('Attempt should retry for failing actions', function (done) {
+        ks.Utils.attempt(function () {
             // Do nothing, success
             attempts++;
 
             if (attempts <= 3) {
-                callback(new Error("error"));
-                return;
+                return Q.reject(new Error("error"));
             }
 
-            callback();
-        }, function (err) {
-            should.not.exist(err);
+            return Q.resolve();
+        }, 3, 10).then(function () {
             attempts.should.equal(4);
             done();
-        }, 3, 10);
+        });
     });
 
-    test('Attempt without failing action should be called once', function (done) {
-        ks.attempt(function (callback) {
+    test('Attempt with failing fails after retries', function (done) {
+        ks.Utils.attempt(function () {
             // Do nothing, success
             attempts++;
 
             if (attempts <= 4) {
-                callback(new Error("error"));
-                return;
+                return Q.reject(new Error("error"));
             }
 
-            callback();
-        }, function (err) {
+            return Q.resolve();
+        }, 3, 10).fail(function (err) {
             err.should.be.ok;
             err.message.should.equal("error");
             attempts.should.equal(4);
             done();
-        }, 3, 10);
+        });
     });
 
     setup(function () {
