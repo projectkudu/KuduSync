@@ -19,6 +19,7 @@ interface QStatic {
     when(value: any, fulfilled_opt: (v?: any) => void, rejected_opt?: (e?: any) => void): Promise;
     resolve(value?: any): Promise;
     reject(value?: any): Promise;
+    delay(action: Function, delay: Number): Promise;
     all(...promises: any[]): Promise;
     ncall(nodeFunction: Function, thisp: any, ...args: any[]);
 }

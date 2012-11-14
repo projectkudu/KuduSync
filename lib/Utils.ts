@@ -6,23 +6,21 @@ module Utils {
         
     export function attempt(action: () => Promise, retries: number = DefaultRetries, delayBeforeRetry: number = DefaultDelayBeforeRetry)  : Promise {
         Ensure.argNotNull(action, "action");
-        var deferred = Q.defer();
         var currentTry = 1;
         
         var retryAction = () => {
-            action().then(
-                deferred.resolve,
+            return action().then(
+                Q.resolve,
                 function(err?) {
                     if (retries >= currentTry++) {
-                        setTimeout(retryAction, delayBeforeRetry);
+                        return Q.delay(retryAction, delayBeforeRetry);
                     }
                     else {
-                        deferred.reject(err);
+                        return Q.reject(err);
                     }
                 });
         };
-        retryAction();
-        return deferred.promise;
+        return retryAction();
     }
     
     export function map(source: any[], action: (element: any, index: Number) => any) : any[] {

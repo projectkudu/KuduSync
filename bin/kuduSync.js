@@ -23,19 +23,17 @@ var Utils;
         if (typeof retries === "undefined") { retries = Utils.DefaultRetries; }
         if (typeof delayBeforeRetry === "undefined") { delayBeforeRetry = Utils.DefaultDelayBeforeRetry; }
         Ensure.argNotNull(action, "action");
-        var deferred = Q.defer();
         var currentTry = 1;
         var retryAction = function () {
-            action().then(deferred.resolve, function (err) {
+            return action().then(Q.resolve, function (err) {
                 if(retries >= currentTry++) {
-                    setTimeout(retryAction, delayBeforeRetry);
+                    return Q.delay(retryAction, delayBeforeRetry);
                 } else {
-                    deferred.reject(err);
+                    return Q.reject(err);
                 }
             });
         };
-        retryAction();
-        return deferred.promise;
+        return retryAction();
     }
     Utils.attempt = attempt;
     function map(source, action) {
@@ -219,7 +217,9 @@ function kuduSync(fromPath, toPath, nextManifestPath, previousManifestPath, what
     return Manifest.load(previousManifestPath).then(function (manifest) {
         return kuduSyncDirectory(from, to, from.path(), to.path(), manifest, nextManifest, whatIf);
     }).then(function () {
-        return Manifest.save(nextManifest, nextManifestPath);
+        if(!whatIf) {
+            return Manifest.save(nextManifest, nextManifestPath);
+        }
     });
 }
 exports.kuduSync = kuduSync;

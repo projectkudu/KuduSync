@@ -15,7 +15,11 @@ function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, pr
 
     return Manifest.load(previousManifestPath)
                     .then((manifest) => kuduSyncDirectory(from, to, from.path(), to.path(), manifest, nextManifest, whatIf))
-                    .then(() => Manifest.save(nextManifest, nextManifestPath));
+                    .then(() => {
+                        if (!whatIf) {
+                            return Manifest.save(nextManifest, nextManifestPath);
+                        }
+                    });
 }
 
 exports.kuduSync = kuduSync;
