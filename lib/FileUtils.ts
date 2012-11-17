@@ -87,6 +87,10 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
     Ensure.argNotNull(outManifest, "outManifest");
 
     try {
+        if (!from.exists()) {
+            return Q.reject(new Error("From directory doesn't exist"));
+        }
+
         // TODO: Generalize files to ignore
         if (from.isSourceControl() || !pathUtil.relative(from.path(), toRootPath)) {
             // No need to copy the source control directory (.git).
@@ -142,6 +146,11 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                         outManifest.addFileToManifest(fromFile.path(), fromRootPath);
 
                         // TODO: Skip deployment files
+
+                        // if the file exists in the destination then only copy it again if it's
+                        // last write time is different than the same file in the source (only if it changed)
+                        var toFile = toFiles[fromFile.name()];
+
                         if (toFile == null || fromFile.modifiedTime() > toFile.modifiedTime()) {
                             return copyFile(fromFile, pathUtil.join(to.path(), fromFile.name()), whatIf);
                         }

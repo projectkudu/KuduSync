@@ -279,6 +279,9 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
     Ensure.argNotNull(manifest, "manifest");
     Ensure.argNotNull(outManifest, "outManifest");
     try  {
+        if(!from.exists()) {
+            return Q.reject(new Error("From directory doesn't exist"));
+        }
         if(from.isSourceControl() || !pathUtil.relative(from.path(), toRootPath)) {
             return Q.resolve();
         }
@@ -309,6 +312,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
         }, function () {
             return Q.all(Utils.map(fromFiles, function (fromFile) {
                 outManifest.addFileToManifest(fromFile.path(), fromRootPath);
+                var toFile = toFiles[fromFile.name()];
                 if(toFile == null || fromFile.modifiedTime() > toFile.modifiedTime()) {
                     return copyFile(fromFile, pathUtil.join(to.path(), fromFile.name()), whatIf);
                 }

@@ -101,8 +101,13 @@ suite('Kudu Sync Functional Tests', function () {
 
         ks.kuduSync(from, to, nextManifestPath, prevManifestPath, true)
             .fail(function (err) {
-                err.should.exist;
-                done();
+                try {
+                    should.exist(err);
+                    done();
+                }
+                catch (e) {
+                    done(e);
+                }
             });
     });
 
