@@ -15,7 +15,10 @@ suite('Attempt Function Tests', function () {
             attempts.should.equal(0);
             attempts++;
             return Q.resolve();
-        }, 3, 10).then(done);
+        }, 3, 10).then(function () {
+            attempts.should.equal(1);
+            done();
+        });
     });
 
     test('Attempt with failing action should be called once', function (done) {

@@ -14,7 +14,6 @@ var Ensure;
     }
     Ensure.argNotNull = argNotNull;
 })(Ensure || (Ensure = {}));
-
 var Utils;
 (function (Utils) {
     Utils.DefaultRetries = 3;
@@ -57,7 +56,6 @@ var Utils;
     }
     Utils.serialize = serialize;
 })(Utils || (Utils = {}));
-
 exports.Utils = Utils;
 var FileInfoBase = (function () {
     function FileInfoBase(path) {
@@ -80,7 +78,7 @@ var __extends = this.__extends || function (d, b) {
     function __() { this.constructor = d; }
     __.prototype = b.prototype;
     d.prototype = new __();
-}
+};
 var FileInfo = (function (_super) {
     __extends(FileInfo, _super);
     function FileInfo(path, modifiedTime) {
