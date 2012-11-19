@@ -98,8 +98,10 @@ var DirectoryInfo = (function (_super) {
     __extends(DirectoryInfo, _super);
     function DirectoryInfo(path) {
         _super.call(this, path);
-        this._files = null;
-        this._directories = null;
+        this._filesMapping = [];
+        this._subDirectoriesMapping = [];
+        this._filesList = [];
+        this._subDirectoriesList = [];
     }
     DirectoryInfo.prototype.ensureCreated = function () {
         var _this = this;
@@ -115,36 +117,42 @@ var DirectoryInfo = (function (_super) {
     DirectoryInfo.prototype.parent = function () {
         return new DirectoryInfo(pathUtil.dirname(this.path()));
     };
-    DirectoryInfo.prototype.ensureFilesDirectories = function () {
+    DirectoryInfo.prototype.initializeFilesAndSubDirectoriesLists = function () {
         var self = this;
-        if(this._files === null || this._directories === null) {
-            var fileInfos = new Array();
-            var directoryInfos = new Array();
-            if(this.exists()) {
-                var files = fs.readdirSync(this.path());
-                files.forEach(function (fileName) {
-                    var path = pathUtil.join(self.path(), fileName);
-                    var stat = fs.statSync(path);
-                    if(stat.isDirectory()) {
-                        directoryInfos[fileName] = new DirectoryInfo(path);
-                        directoryInfos.push(directoryInfos[fileName]);
-                    } else {
-                        fileInfos[fileName] = new FileInfo(path, stat.mtime);
-                        fileInfos.push(fileInfos[fileName]);
-                    }
-                });
-            }
-            this._files = fileInfos;
-            this._directories = directoryInfos;
+        var filesMapping = new Array();
+        var filesList = new Array();
+        var subDirectoriesMapping = new Array();
+        var subDirectoriesList = new Array();
+        if(this.exists()) {
+            var files = fs.readdirSync(this.path());
+            files.forEach(function (fileName) {
+                var path = pathUtil.join(self.path(), fileName);
+                var stat = fs.statSync(path);
+                if(stat.isDirectory()) {
+                    subDirectoriesMapping[fileName] = new DirectoryInfo(path);
+                    subDirectoriesList.push(subDirectoriesMapping[fileName]);
+                } else {
+                    filesMapping[fileName] = new FileInfo(path, stat.mtime);
+                    filesList.push(filesMapping[fileName]);
+                }
+            });
         }
+        this._filesMapping = filesMapping;
+        this._subDirectoriesMapping = subDirectoriesMapping;
+        this._filesList = filesList;
+        this._subDirectoriesList = subDirectoriesList;
     };
-    DirectoryInfo.prototype.files = function () {
-        this.ensureFilesDirectories();
-        return this._files;
+    DirectoryInfo.prototype.filesMapping = function () {
+        return this._filesMapping;
     };
-    DirectoryInfo.prototype.subDirectories = function () {
-        this.ensureFilesDirectories();
-        return this._directories;
+    DirectoryInfo.prototype.subDirectoriesMapping = function () {
+        return this._subDirectoriesMapping;
+    };
+    DirectoryInfo.prototype.filesList = function () {
+        return this._filesList;
+    };
+    DirectoryInfo.prototype.subDirectoriesList = function () {
+        return this._subDirectoriesList;
     };
     return DirectoryInfo;
 })(FileInfoBase);
@@ -277,8 +285,8 @@ function deleteDirectoryRecursive(directory, whatIf) {
     Ensure.argNotNull(directory, "directory");
     var path = directory.path();
     log("Deleting directory: " + path);
-    var files = directory.files();
-    var subDirectories = directory.subDirectories();
+    var files = directory.filesList();
+    var subDirectories = directory.subDirectoriesList();
     return Q.all(Utils.map(files, function (file) {
         return deleteFile(file, whatIf);
     })).then(function () {
@@ -311,24 +319,16 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
         if(!pathUtil.relative(from.path(), toRootPath)) {
             return Q.resolve();
         }
-        var fromFiles = from.files();
-        var toFiles = getFilesConsiderWhatIf(to, whatIf);
-        var fromSubDirectories = from.subDirectories();
-        var toSubDirectories = getSubDirectoriesConsiderWhatIf(to, whatIf);
+        to.initializeFilesAndSubDirectoriesLists();
+        from.initializeFilesAndSubDirectoriesLists();
         return Utils.serialize(function () {
             if(!whatIf) {
                 return to.ensureCreated();
             }
             return Q.resolve();
         }, function () {
-            fromFiles = from.files();
-            toFiles = getFilesConsiderWhatIf(to, whatIf);
-            fromSubDirectories = from.subDirectories();
-            toSubDirectories = getSubDirectoriesConsiderWhatIf(to, whatIf);
-            return Q.resolve();
-        }, function () {
-            return Q.all(Utils.map(toFiles, function (toFile) {
-                if(!fromFiles[toFile.name()]) {
+            return Q.all(Utils.map(to.filesList(), function (toFile) {
+                if(!from.filesMapping()[toFile.name()]) {
                     if(manifest.isEmpty() || manifest.isPathInManifest(toFile.path(), toRootPath)) {
                         return deleteFile(toFile, whatIf);
                     }
@@ -336,20 +336,20 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
                 return Q.resolve();
             }));
         }, function () {
-            return Q.all(Utils.map(fromFiles, function (fromFile) {
+            return Q.all(Utils.map(from.filesList(), function (fromFile) {
                 if(shouldIgnore(fromFile.path(), fromRootPath, ignoreList)) {
                     return Q.resolve();
                 }
                 outManifest.addFileToManifest(fromFile.path(), fromRootPath);
-                var toFile = toFiles[fromFile.name()];
+                var toFile = to.filesMapping()[fromFile.name()];
                 if(toFile == null || fromFile.modifiedTime() > toFile.modifiedTime()) {
                     return copyFile(fromFile, pathUtil.join(to.path(), fromFile.name()), whatIf);
                 }
                 return Q.resolve();
             }));
         }, function () {
-            return Q.all(Utils.map(toSubDirectories, function (toSubDirectory) {
-                if(!fromSubDirectories[toSubDirectory.name()]) {
+            return Q.all(Utils.map(to.subDirectoriesList(), function (toSubDirectory) {
+                if(!from.subDirectoriesMapping()[toSubDirectory.name()]) {
                     if(manifest.isEmpty() || manifest.isPathInManifest(toSubDirectory.path(), toRootPath)) {
                         return deleteDirectoryRecursive(toSubDirectory, whatIf);
                     }
@@ -357,7 +357,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
                 return Q.resolve();
             }));
         }, function () {
-            return Q.all(Utils.map(fromSubDirectories, function (fromSubDirectory) {
+            return Q.all(Utils.map(from.subDirectoriesList(), function (fromSubDirectory) {
                 outManifest.addFileToManifest(fromSubDirectory.path(), fromRootPath);
                 var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()));
                 return kuduSyncDirectory(fromSubDirectory, toSubDirectory, fromRootPath, toRootPath, manifest, outManifest, ignoreList, whatIf);
@@ -365,26 +365,6 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
         });
     } catch (err) {
         return Q.reject(err);
-    }
-}
-function getFilesConsiderWhatIf(dir, whatIf) {
-    try  {
-        return dir.files();
-    } catch (e) {
-        if(whatIf) {
-            return [];
-        }
-        throw e;
-    }
-}
-function getSubDirectoriesConsiderWhatIf(dir, whatIf) {
-    try  {
-        return dir.subDirectories();
-    } catch (e) {
-        if(whatIf) {
-            return [];
-        }
-        throw e;
     }
 }
 function main() {

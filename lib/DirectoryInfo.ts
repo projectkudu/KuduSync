@@ -1,14 +1,18 @@
 ///<reference path='fileInfo.ts'/>
 
 class DirectoryInfo extends FileInfoBase {
-    private _files: FileInfo[];
-    private _directories: DirectoryInfo[];
+    private _filesMapping: FileInfo[];
+    private _subDirectoriesMapping: DirectoryInfo[];
+    private _filesList: FileInfo[];
+    private _subDirectoriesList: DirectoryInfo[];
 
     constructor (path: string) {
         super(path);
 
-        this._files = null;
-        this._directories = null;
+        this._filesMapping = [];
+        this._subDirectoriesMapping = [];
+        this._filesList = [];
+        this._subDirectoriesList = [];
     }
 
     ensureCreated() : Promise {
@@ -24,47 +28,55 @@ class DirectoryInfo extends FileInfoBase {
         return new DirectoryInfo(pathUtil.dirname(this.path()));
     }
 
-    private ensureFilesDirectories() {
+    initializeFilesAndSubDirectoriesLists() {
         var self = this;
 
-        if (this._files === null || this._directories === null) {
-            var fileInfos = new FileInfo[];
-            var directoryInfos = new DirectoryInfo[];
+        var filesMapping = new FileInfo[];
+        var filesList = new FileInfo[];
+        var subDirectoriesMapping = new DirectoryInfo[];
+        var subDirectoriesList = new DirectoryInfo[];
 
-            // TODO: Add retry here.
-            if (this.exists()) {
-                var files = fs.readdirSync(this.path());
-                files.forEach(
-                    function (fileName: string) {
-                        var path = pathUtil.join(self.path(), fileName);
-                        var stat = fs.statSync(path);
+        // TODO: Add retry here.
+        if (this.exists()) {
+            var files = fs.readdirSync(this.path());
+            files.forEach(
+                function (fileName: string) {
+                    var path = pathUtil.join(self.path(), fileName);
+                    var stat = fs.statSync(path);
 
-                        if (stat.isDirectory()) {
-                            // Store both as mapping as an array
-                            directoryInfos[fileName] = new DirectoryInfo(path);
-                            directoryInfos.push(directoryInfos[fileName]);
-                        }
-                        else {
-                            // Store both as mapping as an array
-                            fileInfos[fileName] = new FileInfo(path, stat.mtime);
-                            fileInfos.push(fileInfos[fileName]);
-                        }
+                    if (stat.isDirectory()) {
+                        // Store both as mapping as an array
+                        subDirectoriesMapping[fileName] = new DirectoryInfo(path);
+                        subDirectoriesList.push(subDirectoriesMapping[fileName]);
                     }
-                );
-            }
-
-            this._files = fileInfos;
-            this._directories = directoryInfos;
+                    else {
+                        // Store both as mapping as an array
+                        filesMapping[fileName] = new FileInfo(path, stat.mtime);
+                        filesList.push(filesMapping[fileName]);
+                    }
+                }
+            );
         }
+
+        this._filesMapping = filesMapping;
+        this._subDirectoriesMapping = subDirectoriesMapping;
+        this._filesList = filesList;
+        this._subDirectoriesList = subDirectoriesList;
     }
 
-    files() {
-        this.ensureFilesDirectories();
-        return this._files;
+    filesMapping() {
+        return this._filesMapping;
     }
 
-    subDirectories() {
-        this.ensureFilesDirectories();
-        return this._directories;
+    subDirectoriesMapping() {
+        return this._subDirectoriesMapping;
+    }
+
+    filesList() {
+        return this._filesList;
+    }
+
+    subDirectoriesList() {
+        return this._subDirectoriesList;
     }
 }

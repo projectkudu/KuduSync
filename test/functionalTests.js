@@ -22,6 +22,11 @@ suite('Kudu Sync Functional Tests', function () {
         runKuduSyncTestScenario(testedFiles, testedFiles, null, done); // Files to create, Files to expect
     });
 
+    test('Single file with digit for file name should be sync\'d', function (done) {
+        var testedFiles = ["5"];
+        runKuduSyncTestScenario(testedFiles, testedFiles, null, done); // Files to create, Files to expect
+    });
+
     test('Several files should be sync\'d', function (done) {
         var testedFiles = ["file1", "file2", "file3"];
         runKuduSyncTestScenario(testedFiles, testedFiles, null, done);
@@ -91,6 +96,10 @@ suite('Kudu Sync Functional Tests', function () {
 
     test('Several files should not be sync\'d with whatIf flag set to true', function (done) {
         runKuduSyncTestScenario(["file1", "file2", "file3"], [], null, done, /*whatIf*/true);
+    });
+
+    test('Several files and direcotires should not be sync\'d with whatIf flag set to true', function (done) {
+        runKuduSyncTestScenario(["file1", "file2", "dir1/dir2/file3"], [], null, done, /*whatIf*/true);
     });
 
     test('From directory doesn\'t exists should fail', function (done) {
