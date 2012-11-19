@@ -43,7 +43,7 @@ function shouldIgnore(path: string, rootPath: string, ignoreList: string[]): boo
 
     for (var i = 0; i < ignoreList.length; i++) {
         var ignore = ignoreList[i];
-        if (minimatch(relativePath, ignore, { baseMatch: true })) {
+        if (minimatch(relativePath, ignore, { matchBase: true })) {
             return true;
         }
     }
@@ -118,7 +118,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
             return Q.reject(new Error("From directory doesn't exist"));
         }
 
-        if (shouldIgnore(from.path(), fromRootPath, ignoreList)) {
+        if (shouldIgnore(from.name(), fromRootPath, ignoreList)) {
             // Ignore directories in ignore list
             return Q.resolve();
         }

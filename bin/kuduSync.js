@@ -15,6 +15,7 @@ var Ensure;
     }
     Ensure.argNotNull = argNotNull;
 })(Ensure || (Ensure = {}));
+
 var Utils;
 (function (Utils) {
     Utils.DefaultRetries = 3;
@@ -57,6 +58,7 @@ var Utils;
     }
     Utils.serialize = serialize;
 })(Utils || (Utils = {}));
+
 exports.Utils = Utils;
 var FileInfoBase = (function () {
     function FileInfoBase(path) {
@@ -79,7 +81,7 @@ var __extends = this.__extends || function (d, b) {
     function __() { this.constructor = d; }
     __.prototype = b.prototype;
     d.prototype = new __();
-};
+}
 var FileInfo = (function (_super) {
     __extends(FileInfo, _super);
     function FileInfo(path, modifiedTime) {
@@ -238,7 +240,7 @@ function shouldIgnore(path, rootPath, ignoreList) {
     for(var i = 0; i < ignoreList.length; i++) {
         var ignore = ignoreList[i];
         if(minimatch(relativePath, ignore, {
-            baseMatch: true
+            matchBase: true
         })) {
             return true;
         }
@@ -303,7 +305,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
         if(!from.exists()) {
             return Q.reject(new Error("From directory doesn't exist"));
         }
-        if(shouldIgnore(from.path(), fromRootPath, ignoreList)) {
+        if(shouldIgnore(from.name(), fromRootPath, ignoreList)) {
             return Q.resolve();
         }
         if(!pathUtil.relative(from.path(), toRootPath)) {

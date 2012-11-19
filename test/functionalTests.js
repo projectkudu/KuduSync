@@ -111,11 +111,76 @@ suite('Kudu Sync Functional Tests', function () {
             });
     });
 
-    test('Ignore files should not copy them', function (done) {
+    test('Ignore files (file2) should not copy them', function (done) {
         var testedFiles = ["file1", "file2", "file3"];
         var ignore = "file2";
         var expectedFiles = ["file1", "-file2", "file3"];
         runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
+    });
+
+    test('Ignore files (file*) should not copy them', function (done) {
+        var testedFiles = ["file1", "file2", "file3", "bin/more/file4", "bin/more/gile5"];
+        var ignore = "file*";
+        var expectedFiles = ["-file1", "-file2", "-file3", "-bin/more/file4", "bin/more/gile5"];
+        runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
+    });
+
+    test('Ignore files (bin/file*) should not copy them', function (done) {
+        var testedFiles = ["file1", "bin/file2", "bin/gile3", "bin/more/file4"];
+        var ignore = "bin/file*";
+        var expectedFiles = ["file1", "-bin/file2", "bin/gile3", "bin/more/file4"];
+        runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
+    });
+
+    test('Ignore files (bin/**) should not copy them', function (done) {
+        var testedFiles = ["file1", "bin/file2", "bin/gile3", "bin/more/file4"];
+        var ignore = "bin/**";
+        var expectedFiles = ["file1", "-bin/file2", "-bin/gile3", "-bin/more/file4", "bin"];
+        runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
+    });
+
+    test('Ignore files (bin) should not copy them', function (done) {
+        var testedFiles = ["file1", "bin/file2", "bin/gile3", "bin/more/file4"];
+        var ignore = "bin";
+        var expectedFiles = ["file1", "-bin/file2", "-bin/gile3", "-bin/more/file4"];
+        runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
+    });
+
+    test('Ignore files (file1) should not copy them', function (done) {
+        var testedFiles = ["file1", "bin/file2", "bin/gile3", "bin/more/file4"];
+        var ignore = "file1";
+        var expectedFiles = ["-file1", "bin/file2", "bin/gile3", "bin/more/file4"];
+        runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
+    });
+
+    test('Ignore files (file1;file2) should not copy them', function (done) {
+        var testedFiles = ["file1", "bin/file2", "bin/file3", "bin/more/file4"];
+        var ignore = "file1;file2";
+        var expectedFiles = ["-file1", "-bin/file2", "bin/file3", "bin/more/file4"];
+        runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
+    });
+
+    test('Ignore files (file1;bin/file3) should not copy them', function (done) {
+        var testedFiles = ["file1", "bin/file2", "bin/file3", "bin/more/file4", "file5"];
+        var ignore = "file1;bin/file3";
+        var expectedFiles = ["-file1", "bin/file2", "-bin/file3", "bin/more/file4", "file5"];
+        runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
+    });
+
+    test('Ignore files (file1;bin/*) should not copy them', function (done) {
+        var testedFiles = ["file1", "bin/file2", "bin/file3", "bin/more/file4", "file5"];
+        var ignore = "file1;bin/*";
+        var expectedFiles = ["-file1", "-bin/file2", "-bin/file3", "bin/more/file4", "file5"];
+        runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
+    });
+
+    test('Ignore files after first sync', function (done) {
+        runKuduSyncTestScenario(["file1", "dir1/file2"], ["file1", "dir1/file2"], null, function () {
+            var testedFiles = ["-file1", "file3", "file4"];
+            var ignore = "file3";
+            var expectedFiles = ["-file1", "dir1/file2", "-file3", "file4"];
+            runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
+        });
     });
 
     setup(function () {
@@ -168,7 +233,7 @@ function testFilesShouldBeEqual(files) {
         if (file.indexOf("-") == 0) {
             file = file.substring(1);
             var fileFullPath = pathUtil.join(baseTestTempDir, testDir, toDir, file);
-            fs.existsSync(fileFullPath).should.not.be.ok;
+            fs.existsSync(fileFullPath).should.equal(false, "File exists: " + fileFullPath);
         }
         else {
             testFileShouldBeEqual(file);
@@ -231,14 +296,17 @@ function filesShouldBeEqual(fromPath, toPath, fileName) {
     // Only validate content if the from file exists
     var expectedContent = null;
     if (fs.existsSync(fromPath)) {
-        expectedContent = fs.readFileSync(fromPath, 'utf8');
+        var stat = tryGetFileStat(fromPath);
+        if (!stat.isDirectory) {
+            expectedContent = fs.readFileSync(fromPath, 'utf8');
+        }
     }
 
     fileShouldExist(toPath, expectedContent);
 }
 
 function fileShouldExist(path, expectedContent) {
-    should.exist(fs.existsSync(path));
+    fs.existsSync(path).should.equal(true, "File doesn't exist: " + path);
 
     // Validate content if received it
     if (expectedContent != null) {
