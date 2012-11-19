@@ -11,10 +11,6 @@ class DirectoryInfo extends FileInfoBase {
         this._directories = null;
     }
 
-    isSourceControl() {
-        return this.name().indexOf(".git") == 0;
-    }
-
     ensureCreated() : Promise {
         if (!this.exists()) {
             return this.parent().ensureCreated().then(() => {

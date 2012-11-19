@@ -1,9 +1,11 @@
 ///<reference path='..\typings\node.d.ts'/>
 ///<reference path='..\typings\q.d.ts'/>
+///<reference path='..\typings\minimatch.d.ts'/>
 
 var fs = require('fs');
 var pathUtil = require('path');
 var Q = require('q');
+var minimatch = require('minimatch');
 
 var log = console.log;
 

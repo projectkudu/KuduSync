@@ -1,7 +1,7 @@
 ///<reference path='directoryInfo.ts'/>
 ///<reference path='manifest.ts'/>
 
-function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, previousManifestPath: string, whatIf: bool) : Promise {
+function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, previousManifestPath: string, ignore: string, whatIf: bool) : Promise {
     Ensure.argNotNull(fromPath, "fromPath");
     Ensure.argNotNull(toPath, "toPath");
     Ensure.argNotNull(nextManifestPath, "nextManifestPath");
@@ -11,10 +11,12 @@ function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, pr
 
     var nextManifest = new Manifest();
 
+    var ignoreList = parseIgnoreList(ignore);
+
     log("Kudu sync from: " + from.path() + " to: " + to.path());
 
     return Manifest.load(previousManifestPath)
-                    .then((manifest) => kuduSyncDirectory(from, to, from.path(), to.path(), manifest, nextManifest, whatIf))
+                    .then((manifest) => kuduSyncDirectory(from, to, from.path(), to.path(), manifest, nextManifest, ignoreList, whatIf))
                     .then(() => {
                         if (!whatIf) {
                             return Manifest.save(nextManifest, nextManifestPath);
@@ -23,6 +25,31 @@ function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, pr
 }
 
 exports.kuduSync = kuduSync;
+
+function parseIgnoreList(ignore: string): string[] {
+    if (!ignore) {
+        return null;
+    }
+
+    return ignore.split(";");
+}
+
+function shouldIgnore(path: string, rootPath: string, ignoreList: string[]): bool {
+    if (!ignoreList) {
+        return false;
+    }
+
+    var relativePath = pathUtil.relative(rootPath, path);
+
+    for (var i = 0; i < ignoreList.length; i++) {
+        var ignore = ignoreList[i];
+        if (minimatch(relativePath, ignore, { baseMatch: true })) {
+            return true;
+        }
+    }
+
+    return false;
+}
 
 function copyFile(fromFile: FileInfo, toFilePath: string, whatIf: bool) : Promise {
     Ensure.argNotNull(fromFile, "fromFile");
@@ -78,7 +105,7 @@ function deleteDirectoryRecursive(directory: DirectoryInfo, whatIf: bool) {
              });
 }
 
-function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath: string, toRootPath: string, manifest: Manifest, outManifest: Manifest, whatIf: bool) {
+function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath: string, toRootPath: string, manifest: Manifest, outManifest: Manifest, ignoreList: string[], whatIf: bool) {
     Ensure.argNotNull(from, "from");
     Ensure.argNotNull(to, "to");
     Ensure.argNotNull(fromRootPath, "fromRootPath");
@@ -91,10 +118,13 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
             return Q.reject(new Error("From directory doesn't exist"));
         }
 
-        // TODO: Generalize files to ignore
-        if (from.isSourceControl() || !pathUtil.relative(from.path(), toRootPath)) {
-            // No need to copy the source control directory (.git).
-            // Or the destination path itself (if contained within the source directory)
+        if (shouldIgnore(from.path(), fromRootPath, ignoreList)) {
+            // Ignore directories in ignore list
+            return Q.resolve();
+        }
+
+        if (!pathUtil.relative(from.path(), toRootPath)) {
+            // No need to copy the destination path itself (if contained within the source directory)
             return Q.resolve();
         }
 
@@ -143,9 +173,12 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                 return Q.all(Utils.map(
                     fromFiles,
                     (fromFile: FileInfo) => {
-                        outManifest.addFileToManifest(fromFile.path(), fromRootPath);
+                        if (shouldIgnore(fromFile.path(), fromRootPath, ignoreList)) {
+                            // Ignore files in ignore list
+                            return Q.resolve();
+                        }
 
-                        // TODO: Skip deployment files
+                        outManifest.addFileToManifest(fromFile.path(), fromRootPath);
 
                         // if the file exists in the destination then only copy it again if it's
                         // last write time is different than the same file in the source (only if it changed)
@@ -154,6 +187,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                         if (toFile == null || fromFile.modifiedTime() > toFile.modifiedTime()) {
                             return copyFile(fromFile, pathUtil.join(to.path(), fromFile.name()), whatIf);
                         }
+
                         return Q.resolve();
                     }
                 ));
@@ -191,6 +225,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                             toRootPath,
                             manifest,
                             outManifest,
+                            ignoreList,
                             whatIf);
                     }
                 ));

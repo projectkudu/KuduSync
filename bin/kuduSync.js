@@ -1,6 +1,7 @@
 var fs = require('fs');
 var pathUtil = require('path');
 var Q = require('q');
+var minimatch = require('minimatch');
 var log = console.log;
 if(!fs.existsSync) {
     fs.existsSync = pathUtil.existsSync;
@@ -98,9 +99,6 @@ var DirectoryInfo = (function (_super) {
         this._files = null;
         this._directories = null;
     }
-    DirectoryInfo.prototype.isSourceControl = function () {
-        return this.name().indexOf(".git") == 0;
-    };
     DirectoryInfo.prototype.ensureCreated = function () {
         var _this = this;
         if(!this.exists()) {
@@ -168,6 +166,7 @@ var Manifest = (function () {
                     manifest._isEmpty = false;
                 }
             });
+            manifest._files = files;
             return Q.resolve(manifest);
         }, function (err) {
             if(err.errno == 34) {
@@ -207,16 +206,17 @@ var Manifest = (function () {
     };
     return Manifest;
 })();
-function kuduSync(fromPath, toPath, nextManifestPath, previousManifestPath, whatIf) {
+function kuduSync(fromPath, toPath, nextManifestPath, previousManifestPath, ignore, whatIf) {
     Ensure.argNotNull(fromPath, "fromPath");
     Ensure.argNotNull(toPath, "toPath");
     Ensure.argNotNull(nextManifestPath, "nextManifestPath");
     var from = new DirectoryInfo(fromPath);
     var to = new DirectoryInfo(toPath);
     var nextManifest = new Manifest();
+    var ignoreList = parseIgnoreList(ignore);
     log("Kudu sync from: " + from.path() + " to: " + to.path());
     return Manifest.load(previousManifestPath).then(function (manifest) {
-        return kuduSyncDirectory(from, to, from.path(), to.path(), manifest, nextManifest, whatIf);
+        return kuduSyncDirectory(from, to, from.path(), to.path(), manifest, nextManifest, ignoreList, whatIf);
     }).then(function () {
         if(!whatIf) {
             return Manifest.save(nextManifest, nextManifestPath);
@@ -224,6 +224,27 @@ function kuduSync(fromPath, toPath, nextManifestPath, previousManifestPath, what
     });
 }
 exports.kuduSync = kuduSync;
+function parseIgnoreList(ignore) {
+    if(!ignore) {
+        return null;
+    }
+    return ignore.split(";");
+}
+function shouldIgnore(path, rootPath, ignoreList) {
+    if(!ignoreList) {
+        return false;
+    }
+    var relativePath = pathUtil.relative(rootPath, path);
+    for(var i = 0; i < ignoreList.length; i++) {
+        var ignore = ignoreList[i];
+        if(minimatch(relativePath, ignore, {
+            baseMatch: true
+        })) {
+            return true;
+        }
+    }
+    return false;
+}
 function copyFile(fromFile, toFilePath, whatIf) {
     Ensure.argNotNull(fromFile, "fromFile");
     Ensure.argNotNull(toFilePath, "toFilePath");
@@ -271,7 +292,7 @@ function deleteDirectoryRecursive(directory, whatIf) {
         return Q.resolve();
     });
 }
-function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outManifest, whatIf) {
+function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outManifest, ignoreList, whatIf) {
     Ensure.argNotNull(from, "from");
     Ensure.argNotNull(to, "to");
     Ensure.argNotNull(fromRootPath, "fromRootPath");
@@ -282,7 +303,10 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
         if(!from.exists()) {
             return Q.reject(new Error("From directory doesn't exist"));
         }
-        if(from.isSourceControl() || !pathUtil.relative(from.path(), toRootPath)) {
+        if(shouldIgnore(from.path(), fromRootPath, ignoreList)) {
+            return Q.resolve();
+        }
+        if(!pathUtil.relative(from.path(), toRootPath)) {
             return Q.resolve();
         }
         var fromFiles = from.files();
@@ -311,6 +335,9 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
             }));
         }, function () {
             return Q.all(Utils.map(fromFiles, function (fromFile) {
+                if(shouldIgnore(fromFile.path(), fromRootPath, ignoreList)) {
+                    return Q.resolve();
+                }
                 outManifest.addFileToManifest(fromFile.path(), fromRootPath);
                 var toFile = toFiles[fromFile.name()];
                 if(toFile == null || fromFile.modifiedTime() > toFile.modifiedTime()) {
@@ -331,7 +358,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
             return Q.all(Utils.map(fromSubDirectories, function (fromSubDirectory) {
                 outManifest.addFileToManifest(fromSubDirectory.path(), fromRootPath);
                 var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()));
-                return kuduSyncDirectory(fromSubDirectory, toSubDirectory, fromRootPath, toRootPath, manifest, outManifest, whatIf);
+                return kuduSyncDirectory(fromSubDirectory, toSubDirectory, fromRootPath, toRootPath, manifest, outManifest, ignoreList, whatIf);
             }));
         });
     } catch (err) {
@@ -360,12 +387,13 @@ function getSubDirectoriesConsiderWhatIf(dir, whatIf) {
 }
 function main() {
     var commander = require("commander");
-    commander.version("0.0.1").option("-f, --fromDir <dir path>", "Source directory to sync").option("-t, --toDir <dir path>", "Destination directory to sync").option("-n, --nextManifest <manifest file path>", "Next manifest file path").option("-p, --previousManifest [manifest file path]", "Previous manifest file path").option("-q, --quiet", "No logging").option("-w, --whatIf", "Only log without actual copy/remove of files").parse(process.argv);
+    commander.version("0.0.1").option("-f, --fromDir <dir path>", "Source directory to sync").option("-t, --toDir <dir path>", "Destination directory to sync").option("-n, --nextManifest <manifest file path>", "Next manifest file path").option("-p, --previousManifest [manifest file path]", "Previous manifest file path").option("-i, --ignore [patterns]", "List of files/directories to ignore and not sync, delimited by ;").option("-q, --quiet", "No logging").option("-w, --whatIf", "Only log without actual copy/remove of files").parse(process.argv);
     var commanderValues = commander;
     var fromDir = commanderValues.fromDir;
     var toDir = commanderValues.toDir;
     var previousManifest = commanderValues.previousManifest;
     var nextManifest = commanderValues.nextManifest;
+    var ignore = commanderValues.ignore;
     var quiet = commanderValues.quiet;
     var whatIf = commanderValues.whatIf;
     if(quiet) {
@@ -378,7 +406,7 @@ function main() {
         process.exit(1);
         return;
     }
-    kuduSync(fromDir, toDir, nextManifest, previousManifest, whatIf).then(function () {
+    kuduSync(fromDir, toDir, nextManifest, previousManifest, ignore, whatIf).then(function () {
         process.exit(0);
     }, function (err) {
         if(err) {

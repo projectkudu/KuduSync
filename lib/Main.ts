@@ -10,6 +10,7 @@ function main() {
         .option("-t, --toDir <dir path>", "Destination directory to sync")
         .option("-n, --nextManifest <manifest file path>", "Next manifest file path")
         .option("-p, --previousManifest [manifest file path]", "Previous manifest file path")
+        .option("-i, --ignore [patterns]", "List of files/directories to ignore and not sync, delimited by ;")
         .option("-q, --quiet", "No logging")
         .option("-w, --whatIf", "Only log without actual copy/remove of files")
         .parse(process.argv);
@@ -19,6 +20,7 @@ function main() {
     var toDir = commanderValues.toDir;
     var previousManifest = commanderValues.previousManifest;
     var nextManifest = commanderValues.nextManifest;
+    var ignore = commanderValues.ignore;
     var quiet = commanderValues.quiet;
     var whatIf = commanderValues.whatIf;
 
@@ -42,6 +44,7 @@ function main() {
         toDir,
         nextManifest,
         previousManifest,
+        ignore,
         whatIf).then(
             () => {
                 process.exit(0);

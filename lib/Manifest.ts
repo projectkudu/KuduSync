@@ -30,6 +30,7 @@ class Manifest {
                         }
                     }
                 );
+                manifest._files = files;
                 return Q.resolve(manifest);
             },
             function(err?) {
