@@ -48,13 +48,15 @@ class DirectoryInfo extends FileInfoBase {
 
                             if (stat.isDirectory()) {
                                 // Store both as mapping as an array
-                                subDirectoriesMapping[fileName] = new DirectoryInfo(path);
-                                subDirectoriesList.push(subDirectoriesMapping[fileName]);
+                                var directoryInfo = new DirectoryInfo(path);
+                                subDirectoriesMapping[fileName.toUpperCase()] = directoryInfo;
+                                subDirectoriesList.push(directoryInfo);
                             }
                             else {
                                 // Store both as mapping as an array
-                                filesMapping[fileName] = new FileInfo(path, stat.mtime);
-                                filesList.push(filesMapping[fileName]);
+                                var fileInfo = new FileInfo(path, stat.mtime);
+                                filesMapping[fileName.toUpperCase()] = fileInfo;
+                                filesList.push(fileInfo);
                             }
                         }
                     );
@@ -75,12 +77,16 @@ class DirectoryInfo extends FileInfoBase {
         return Q.resolve();
     }
 
-    filesMapping() {
-        return this._filesMapping;
+    getFile(fileName: string): FileInfo {
+        Ensure.argNotNull(fileName, "fileName");
+
+        return this._filesMapping[fileName.toUpperCase()];
     }
 
-    subDirectoriesMapping() {
-        return this._subDirectoriesMapping;
+    getSubDirectory(subDirectoryName: string): DirectoryInfo {
+        Ensure.argNotNull(subDirectoryName, "subDirectoryName");
+
+        return this._subDirectoriesMapping[subDirectoryName.toUpperCase()];
     }
 
     filesList() {

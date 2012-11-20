@@ -132,11 +132,13 @@ var DirectoryInfo = (function (_super) {
                         var path = pathUtil.join(self.path(), fileName);
                         var stat = fs.statSync(path);
                         if(stat.isDirectory()) {
-                            subDirectoriesMapping[fileName] = new DirectoryInfo(path);
-                            subDirectoriesList.push(subDirectoriesMapping[fileName]);
+                            var directoryInfo = new DirectoryInfo(path);
+                            subDirectoriesMapping[fileName.toUpperCase()] = directoryInfo;
+                            subDirectoriesList.push(directoryInfo);
                         } else {
-                            filesMapping[fileName] = new FileInfo(path, stat.mtime);
-                            filesList.push(filesMapping[fileName]);
+                            var fileInfo = new FileInfo(path, stat.mtime);
+                            filesMapping[fileName.toUpperCase()] = fileInfo;
+                            filesList.push(fileInfo);
                         }
                     });
                     _this._filesMapping = filesMapping;
@@ -151,11 +153,13 @@ var DirectoryInfo = (function (_super) {
         }
         return Q.resolve();
     };
-    DirectoryInfo.prototype.filesMapping = function () {
-        return this._filesMapping;
+    DirectoryInfo.prototype.getFile = function (fileName) {
+        Ensure.argNotNull(fileName, "fileName");
+        return this._filesMapping[fileName.toUpperCase()];
     };
-    DirectoryInfo.prototype.subDirectoriesMapping = function () {
-        return this._subDirectoriesMapping;
+    DirectoryInfo.prototype.getSubDirectory = function (subDirectoryName) {
+        Ensure.argNotNull(subDirectoryName, "subDirectoryName");
+        return this._subDirectoriesMapping[subDirectoryName.toUpperCase()];
     };
     DirectoryInfo.prototype.filesList = function () {
         return this._filesList;
@@ -257,7 +261,8 @@ function shouldIgnore(path, rootPath, ignoreList) {
     for(var i = 0; i < ignoreList.length; i++) {
         var ignore = ignoreList[i];
         if(minimatch(relativePath, ignore, {
-            matchBase: true
+            matchBase: true,
+            nocase: true
         })) {
             return true;
         }
@@ -339,7 +344,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
             from.initializeFilesAndSubDirectoriesLists();
         }, function () {
             return Q.all(Utils.map(to.filesList(), function (toFile) {
-                if(!from.filesMapping()[toFile.name()]) {
+                if(!from.getFile(toFile.name())) {
                     if(manifest.isEmpty() || manifest.isPathInManifest(toFile.path(), toRootPath)) {
                         return deleteFile(toFile, whatIf);
                     }
@@ -352,7 +357,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
                     return Q.resolve();
                 }
                 outManifest.addFileToManifest(fromFile.path(), fromRootPath);
-                var toFile = to.filesMapping()[fromFile.name()];
+                var toFile = to.getFile(fromFile.name());
                 if(toFile == null || fromFile.modifiedTime() > toFile.modifiedTime()) {
                     return copyFile(fromFile, pathUtil.join(to.path(), fromFile.name()), whatIf);
                 }
@@ -360,7 +365,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
             }));
         }, function () {
             return Q.all(Utils.map(to.subDirectoriesList(), function (toSubDirectory) {
-                if(!from.subDirectoriesMapping()[toSubDirectory.name()]) {
+                if(!from.getSubDirectory(toSubDirectory.name())) {
                     if(manifest.isEmpty() || manifest.isPathInManifest(toSubDirectory.path(), toRootPath)) {
                         return deleteDirectoryRecursive(toSubDirectory, whatIf);
                     }

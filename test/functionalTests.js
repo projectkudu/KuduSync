@@ -270,6 +270,7 @@ function runKuduSync(prevManifestFile, nextManifestFile, ignore, whatIf, callbac
 function generateFromFiles(files) {
     for (var index in files) {
         var file = files[index];
+        file = file.toUpperCase(); // to find casing bugs
         generateFromFile(file);
     }
 }
@@ -328,10 +329,8 @@ function generateFile(path, content) {
     if (content == null) {
         content = randomString();
     }
-
     ensurePathExists(pathUtil.dirname(path));
     fs.writeFileSync(path, content, 'utf8');
-
     return content;
 }
 

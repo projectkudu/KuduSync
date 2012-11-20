@@ -43,7 +43,7 @@ function shouldIgnore(path: string, rootPath: string, ignoreList: string[]): boo
 
     for (var i = 0; i < ignoreList.length; i++) {
         var ignore = ignoreList[i];
-        if (minimatch(relativePath, ignore, { matchBase: true })) {
+        if (minimatch(relativePath, ignore, { matchBase: true, nocase: true })) {
             return true;
         }
     }
@@ -153,7 +153,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                     to.filesList(),
                     (toFile: FileInfo) => {
                         // TODO: handle case sensitivity
-                        if (!from.filesMapping()[toFile.name()]) {
+                        if (!from.getFile(toFile.name())) {
                             if (manifest.isEmpty() || manifest.isPathInManifest(toFile.path(), toRootPath)) {
                                 return deleteFile(toFile, whatIf);
                             }
@@ -177,7 +177,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
 
                         // if the file exists in the destination then only copy it again if it's
                         // last write time is different than the same file in the source (only if it changed)
-                        var toFile = to.filesMapping()[fromFile.name()];
+                        var toFile = to.getFile(fromFile.name());
 
                         if (toFile == null || fromFile.modifiedTime() > toFile.modifiedTime()) {
                             return copyFile(fromFile, pathUtil.join(to.path(), fromFile.name()), whatIf);
@@ -195,7 +195,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                         // If the file doesn't exist in the source, only delete if:
                         // 1. We have no previous directory
                         // 2. We have a previous directory and the file exists there
-                        if (!from.subDirectoriesMapping()[toSubDirectory.name()]) {
+                        if (!from.getSubDirectory(toSubDirectory.name())) {
                             if (manifest.isEmpty() || manifest.isPathInManifest(toSubDirectory.path(), toRootPath)) {
                                 return deleteDirectoryRecursive(toSubDirectory, whatIf);
                             }
