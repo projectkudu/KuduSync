@@ -6,5 +6,6 @@ declare interface Commander {
     version(versionStr: string): Commander;
     option(args: string, msg: string, fn?: Function): Commander;
     parse(argv: string[]);
+    usage(msg: string);
     help();
 }

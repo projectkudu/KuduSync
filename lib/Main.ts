@@ -1,11 +1,13 @@
 ///<reference path='fileUtils.ts'/>
 ///<reference path='../typings/commander.d.ts'/>
 
+
 function main() {
     var commander: Commander = require("commander");
 
     commander
         .version("0.0.1")
+        .usage("[options]")
         .option("-f, --fromDir <dir path>", "Source directory to sync")
         .option("-t, --toDir <dir path>", "Destination directory to sync")
         .option("-n, --nextManifest <manifest file path>", "Next manifest file path")
