@@ -264,6 +264,7 @@ function shouldIgnore(path, rootPath, ignoreList) {
             matchBase: true,
             nocase: true
         })) {
+            log("Ignoring: " + path);
             return true;
         }
     }
@@ -272,7 +273,7 @@ function shouldIgnore(path, rootPath, ignoreList) {
 function copyFile(fromFile, toFilePath, whatIf) {
     Ensure.argNotNull(fromFile, "fromFile");
     Ensure.argNotNull(toFilePath, "toFilePath");
-    log("Copy file from: " + fromFile.path() + " to: " + toFilePath);
+    log("Copying file from: " + fromFile.path() + " to: " + toFilePath);
     return Utils.attempt(function () {
         try  {
             if(!whatIf) {
@@ -327,7 +328,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
         if(!from.exists()) {
             return Q.reject(new Error("From directory doesn't exist"));
         }
-        if(shouldIgnore(from.name(), fromRootPath, ignoreList)) {
+        if(shouldIgnore(from.path(), fromRootPath, ignoreList)) {
             return Q.resolve();
         }
         if(!pathUtil.relative(from.path(), toRootPath)) {

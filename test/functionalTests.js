@@ -179,7 +179,7 @@ suite('Kudu Sync Functional Tests', function () {
     test('Ignore files (file1;bin/*) should not copy them', function (done) {
         var testedFiles = ["file1", "bin/file2", "bin/file3", "bin/more/file4", "file5"];
         var ignore = "file1;bin/*";
-        var expectedFiles = ["-file1", "-bin/file2", "-bin/file3", "bin/more/file4", "file5"];
+        var expectedFiles = ["-file1", "-bin/file2", "-bin/file3", "-bin/more/file4", "file5"];
         runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
     });
 
