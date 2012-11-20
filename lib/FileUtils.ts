@@ -128,9 +128,6 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
             return Q.resolve();
         }
 
-        to.initializeFilesAndSubDirectoriesLists();
-        from.initializeFilesAndSubDirectoriesLists();
-
         // Do the following actions one after the other (serialized)
         return Utils.serialize(
             () => {
@@ -138,6 +135,14 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                     return to.ensureCreated();
                 }
                 return Q.resolve();
+            },
+
+            () => {
+                to.initializeFilesAndSubDirectoriesLists();
+            },
+
+            () => {
+                from.initializeFilesAndSubDirectoriesLists();
             },
 
             () => {

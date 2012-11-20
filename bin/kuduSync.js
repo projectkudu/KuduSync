@@ -118,29 +118,38 @@ var DirectoryInfo = (function (_super) {
         return new DirectoryInfo(pathUtil.dirname(this.path()));
     };
     DirectoryInfo.prototype.initializeFilesAndSubDirectoriesLists = function () {
+        var _this = this;
         var self = this;
         var filesMapping = new Array();
         var filesList = new Array();
         var subDirectoriesMapping = new Array();
         var subDirectoriesList = new Array();
         if(this.exists()) {
-            var files = fs.readdirSync(this.path());
-            files.forEach(function (fileName) {
-                var path = pathUtil.join(self.path(), fileName);
-                var stat = fs.statSync(path);
-                if(stat.isDirectory()) {
-                    subDirectoriesMapping[fileName] = new DirectoryInfo(path);
-                    subDirectoriesList.push(subDirectoriesMapping[fileName]);
-                } else {
-                    filesMapping[fileName] = new FileInfo(path, stat.mtime);
-                    filesList.push(filesMapping[fileName]);
+            return Utils.attempt(function () {
+                try  {
+                    var files = fs.readdirSync(_this.path());
+                    files.forEach(function (fileName) {
+                        var path = pathUtil.join(self.path(), fileName);
+                        var stat = fs.statSync(path);
+                        if(stat.isDirectory()) {
+                            subDirectoriesMapping[fileName] = new DirectoryInfo(path);
+                            subDirectoriesList.push(subDirectoriesMapping[fileName]);
+                        } else {
+                            filesMapping[fileName] = new FileInfo(path, stat.mtime);
+                            filesList.push(filesMapping[fileName]);
+                        }
+                    });
+                    _this._filesMapping = filesMapping;
+                    _this._subDirectoriesMapping = subDirectoriesMapping;
+                    _this._filesList = filesList;
+                    _this._subDirectoriesList = subDirectoriesList;
+                    return Q.resolve();
+                } catch (err) {
+                    return Q.reject(err);
                 }
             });
         }
-        this._filesMapping = filesMapping;
-        this._subDirectoriesMapping = subDirectoriesMapping;
-        this._filesList = filesList;
-        this._subDirectoriesList = subDirectoriesList;
+        return Q.resolve();
     };
     DirectoryInfo.prototype.filesMapping = function () {
         return this._filesMapping;
@@ -319,13 +328,15 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
         if(!pathUtil.relative(from.path(), toRootPath)) {
             return Q.resolve();
         }
-        to.initializeFilesAndSubDirectoriesLists();
-        from.initializeFilesAndSubDirectoriesLists();
         return Utils.serialize(function () {
             if(!whatIf) {
                 return to.ensureCreated();
             }
             return Q.resolve();
+        }, function () {
+            to.initializeFilesAndSubDirectoriesLists();
+        }, function () {
+            from.initializeFilesAndSubDirectoriesLists();
         }, function () {
             return Q.all(Utils.map(to.filesList(), function (toFile) {
                 if(!from.filesMapping()[toFile.name()]) {

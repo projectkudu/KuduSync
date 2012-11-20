@@ -28,7 +28,7 @@ class DirectoryInfo extends FileInfoBase {
         return new DirectoryInfo(pathUtil.dirname(this.path()));
     }
 
-    initializeFilesAndSubDirectoriesLists() {
+    initializeFilesAndSubDirectoriesLists() : Promise {
         var self = this;
 
         var filesMapping = new FileInfo[];
@@ -36,32 +36,43 @@ class DirectoryInfo extends FileInfoBase {
         var subDirectoriesMapping = new DirectoryInfo[];
         var subDirectoriesList = new DirectoryInfo[];
 
-        // TODO: Add retry here.
         if (this.exists()) {
-            var files = fs.readdirSync(this.path());
-            files.forEach(
-                function (fileName: string) {
-                    var path = pathUtil.join(self.path(), fileName);
-                    var stat = fs.statSync(path);
+            return Utils.attempt(() => {
+                try {
+                    // TODO: Consider changing this call to async
+                    var files = fs.readdirSync(this.path());
+                    files.forEach(
+                        function (fileName: string) {
+                            var path = pathUtil.join(self.path(), fileName);
+                            var stat = fs.statSync(path);
 
-                    if (stat.isDirectory()) {
-                        // Store both as mapping as an array
-                        subDirectoriesMapping[fileName] = new DirectoryInfo(path);
-                        subDirectoriesList.push(subDirectoriesMapping[fileName]);
-                    }
-                    else {
-                        // Store both as mapping as an array
-                        filesMapping[fileName] = new FileInfo(path, stat.mtime);
-                        filesList.push(filesMapping[fileName]);
-                    }
+                            if (stat.isDirectory()) {
+                                // Store both as mapping as an array
+                                subDirectoriesMapping[fileName] = new DirectoryInfo(path);
+                                subDirectoriesList.push(subDirectoriesMapping[fileName]);
+                            }
+                            else {
+                                // Store both as mapping as an array
+                                filesMapping[fileName] = new FileInfo(path, stat.mtime);
+                                filesList.push(filesMapping[fileName]);
+                            }
+                        }
+                    );
+
+                    this._filesMapping = filesMapping;
+                    this._subDirectoriesMapping = subDirectoriesMapping;
+                    this._filesList = filesList;
+                    this._subDirectoriesList = subDirectoriesList;
+
+                    return Q.resolve();
                 }
-            );
+                catch (err) {
+                    return Q.reject(err);
+                }
+            });
         }
 
-        this._filesMapping = filesMapping;
-        this._subDirectoriesMapping = subDirectoriesMapping;
-        this._filesList = filesList;
-        this._subDirectoriesList = subDirectoriesList;
+        return Q.resolve();
     }
 
     filesMapping() {
