@@ -152,7 +152,6 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                 return Q.all(Utils.map(
                     to.filesList(),
                     (toFile: FileInfo) => {
-                        // TODO: handle case sensitivity
                         if (!from.getFile(toFile.name())) {
                             if (manifest.isEmpty() || manifest.isPathInManifest(toFile.path(), toRootPath)) {
                                 return deleteFile(toFile, whatIf);
