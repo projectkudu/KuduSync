@@ -183,11 +183,38 @@ suite('Kudu Sync Functional Tests', function () {
         runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
     });
 
-    test('Ignore files after first sync', function (done) {
+    test('Ignore files added after first sync', function (done) {
         runKuduSyncTestScenario(["file1", "dir1/file2"], ["file1", "dir1/file2"], null, function () {
             var testedFiles = ["-file1", "file3", "file4"];
             var ignore = "file3";
             var expectedFiles = ["-file1", "dir1/file2", "-file3", "file4"];
+            runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
+        });
+    });
+
+    test('Ignore files removed after first sync', function (done) {
+        runKuduSyncTestScenario(["file1", "dir1/file2"], ["file1", "dir1/file2"], null, function () {
+            var testedFiles = ["-file1", "file3", "file4"];
+            var ignore = "file1";
+            var expectedFiles = ["file1", "dir1/file2", "file3", "file4"];
+            runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
+        });
+    });
+
+    test('Ignore directories added after first sync', function (done) {
+        runKuduSyncTestScenario(["file1", "dir1/file2"], ["file1", "dir1/file2"], null, function () {
+            var testedFiles = ["-file1", "dir1/file3", "file4"];
+            var ignore = "dir1";
+            var expectedFiles = ["-file1", "dir1/file2", "-dir1/file3", "file4"];
+            runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
+        });
+    });
+
+    test('Ignore directories removed after first sync', function (done) {
+        runKuduSyncTestScenario(["file1", "dir1/file2"], ["file1", "dir1/file2"], null, function () {
+            var testedFiles = ["-file1", "-dir1/file2", "dir1/file3", "file4"];
+            var ignore = "dir1";
+            var expectedFiles = ["-file1", "dir1/file2", "-dir1/file3", "file4"];
             runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
         });
     });

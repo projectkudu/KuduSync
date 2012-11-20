@@ -128,6 +128,10 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
             return Q.resolve();
         }
 
+        if (from.path() != fromRootPath) {
+            outManifest.addFileToManifest(from.path(), fromRootPath);
+        }
+
         // Do the following actions one after the other (serialized)
         return Utils.serialize(
             () => {
@@ -152,6 +156,11 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                 return Q.all(Utils.map(
                     to.filesList(),
                     (toFile: FileInfo) => {
+                        if (shouldIgnore(toFile.path(), toRootPath, ignoreList)) {
+                            // Ignore files in ignore list
+                            return Q.resolve();
+                        }
+
                         if (!from.getFile(toFile.name())) {
                             if (manifest.isEmpty() || manifest.isPathInManifest(toFile.path(), toRootPath)) {
                                 return deleteFile(toFile, whatIf);
@@ -209,8 +218,6 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                 return Q.all(Utils.map(
                     from.subDirectoriesList(),
                     (fromSubDirectory: DirectoryInfo) => {
-                        outManifest.addFileToManifest(fromSubDirectory.path(), fromRootPath);
-
                         var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()));
                         return kuduSyncDirectory(
                             fromSubDirectory,

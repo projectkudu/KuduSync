@@ -333,6 +333,9 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
         if(!pathUtil.relative(from.path(), toRootPath)) {
             return Q.resolve();
         }
+        if(from.path() != fromRootPath) {
+            outManifest.addFileToManifest(from.path(), fromRootPath);
+        }
         return Utils.serialize(function () {
             if(!whatIf) {
                 return to.ensureCreated();
@@ -344,6 +347,9 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
             from.initializeFilesAndSubDirectoriesLists();
         }, function () {
             return Q.all(Utils.map(to.filesList(), function (toFile) {
+                if(shouldIgnore(toFile.path(), toRootPath, ignoreList)) {
+                    return Q.resolve();
+                }
                 if(!from.getFile(toFile.name())) {
                     if(manifest.isEmpty() || manifest.isPathInManifest(toFile.path(), toRootPath)) {
                         return deleteFile(toFile, whatIf);
@@ -374,7 +380,6 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
             }));
         }, function () {
             return Q.all(Utils.map(from.subDirectoriesList(), function (fromSubDirectory) {
-                outManifest.addFileToManifest(fromSubDirectory.path(), fromRootPath);
                 var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()));
                 return kuduSyncDirectory(fromSubDirectory, toSubDirectory, fromRootPath, toRootPath, manifest, outManifest, ignoreList, whatIf);
             }));
