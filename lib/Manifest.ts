@@ -26,10 +26,10 @@ class Manifest {
                         var file = filePath.trim();
                         if (file != "") {
                             files[file] = file;
-                            manifest._isEmpty = false;
                         }
                     }
                 );
+                manifest._isEmpty = false;
                 manifest._files = files;
                 return Q.resolve(manifest);
             },

@@ -94,6 +94,30 @@ suite('Kudu Sync Functional Tests', function () {
         });
     });
 
+    test('File created then removed (resulting in empty manifest) then added while target has an extra file which should stay', function (done) {
+        runKuduSyncTestScenario(["file1"], ["file1"], null, function () {
+            // Generating files only in the destination directory, those files shouldn't be removed
+            generateToFile("tofile2");
+
+            runKuduSyncTestScenario(["-file1"], ["-file1", "tofile2"], null, function () {
+
+                runKuduSyncTestScenario(["file1"], ["file1", "tofile2"], null, done);
+            });
+        });
+    });
+
+    test('No previous manifest will clean target directory', function (done) {
+        runKuduSyncTestScenario(["file1"], ["file1"], null, function () {
+            // Generating files only in the destination directory, those files shouldn't be removed
+            generateToFile("tofile2");
+
+            runKuduSyncTestScenario(["-file1"], ["-file1", "tofile2"], null, function () {
+                removeManifestFile();
+                runKuduSyncTestScenario(["file1"], ["file1", "-tofile2"], null, done);
+            });
+        });
+    });
+
     test('Several files should not be sync\'d with whatIf flag set to true', function (done) {
         runKuduSyncTestScenario(["file1", "file2", "file3"], [], null, done, /*whatIf*/true);
     });
@@ -254,6 +278,11 @@ function runKuduSyncTestScenario(updatedFiles, expectedFiles, ignore, callback, 
             }
         }, 100);
     });
+}
+
+function removeManifestFile() {
+    var manifestPath = pathUtil.join(baseTestTempDir, testDir, "manifest1");
+    tryRemoveFile(manifestPath);
 }
 
 function incrementTestDir() {
