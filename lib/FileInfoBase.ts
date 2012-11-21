@@ -19,7 +19,7 @@ class FileInfoBase {
         return this._path;
     }
 
-    exists(): string {
+    exists(): bool {
         return fs.existsSync(this.path());
     }
 }

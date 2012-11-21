@@ -19,78 +19,111 @@ var testDir = "";
 suite('Kudu Sync Functional Tests', function () {
     test('Single file should be sync\'d', function (done) {
         var testedFiles = ["file1"];
-        runKuduSyncTestScenario(testedFiles, testedFiles, done); // Files to create, Files to expect
+        runKuduSyncTestScenario(testedFiles, testedFiles, null, done); // Files to create, Files to expect
+    });
+
+    test('Single file with digit for file name should be sync\'d', function (done) {
+        var testedFiles = ["5"];
+        runKuduSyncTestScenario(testedFiles, testedFiles, null, done); // Files to create, Files to expect
     });
 
     test('Several files should be sync\'d', function (done) {
         var testedFiles = ["file1", "file2", "file3"];
-        runKuduSyncTestScenario(testedFiles, testedFiles, done);
+        runKuduSyncTestScenario(testedFiles, testedFiles, null, done);
     });
 
     test('Several files and sub-directories should be sync\'d', function (done) {
         var testedFiles = ["file1", "file2", "dir1/file3", "dir1/dir2/dir3/file4", "dir1/dir2/dir3/file5", "dir2/file6.txt"];
-        runKuduSyncTestScenario(testedFiles, testedFiles, done);
+        runKuduSyncTestScenario(testedFiles, testedFiles, null, done);
     });
 
     test('Single file updated should be sync\'d', function (done) {
-        runKuduSyncTestScenario(["file1.bin"], ["file1.bin"], function () {
+        runKuduSyncTestScenario(["file1.bin"], ["file1.bin"], null, function () {
 
             // Waiting 1 second for updated file to have a newer modified time
             setTimeout(function () {
-                runKuduSyncTestScenario(["file1.bin"], ["file1.bin"], done);
+                runKuduSyncTestScenario(["file1.bin"], ["file1.bin"], null, done);
             }, 1000);
         });
     });
 
     test('Several files updated should be sync\'d', function (done) {
-        runKuduSyncTestScenario(["file1.bin", "file2", "dir1/file3", "dir1/dir2/dir3/file4"], ["file1.bin", "file2", "dir1/file3", "dir1/dir2/dir3/file4"], function () {
+        runKuduSyncTestScenario(["file1.bin", "file2", "dir1/file3", "dir1/dir2/dir3/file4"], ["file1.bin", "file2", "dir1/file3", "dir1/dir2/dir3/file4"], null, function () {
 
             // Waiting 1 second for updated file to have a newer modified time
             setTimeout(function () {
-                runKuduSyncTestScenario(["file2", "dir1/file3", "dir1/dir2/dir3/file5", "dir2/file6.txt"], ["file1.bin", "file2", "dir1/file3", "dir1/dir2/dir3/file4", "dir1/dir2/dir3/file5", "dir2/file6.txt"], done);
+                runKuduSyncTestScenario(["file2", "dir1/file3", "dir1/dir2/dir3/file5", "dir2/file6.txt"], ["file1.bin", "file2", "dir1/file3", "dir1/dir2/dir3/file4", "dir1/dir2/dir3/file5", "dir2/file6.txt"], null, done);
             }, 1000);
         });
     });
 
     test('Single file created then removed should be sync\'d', function (done) {
-        runKuduSyncTestScenario(["file1"], ["file1"], function () {
-            runKuduSyncTestScenario(["-file1"], ["-file1"], done);
+        runKuduSyncTestScenario(["file1"], ["file1"], null, function () {
+            runKuduSyncTestScenario(["-file1"], ["-file1"], null, done);
         });
     });
 
     test('Several files some created some removed should be sync\'d', function (done) {
-        runKuduSyncTestScenario(["file1.bin", "file2", "dir1/file3", "dir1/dir2/dir3/file4"], ["file1.bin", "file2", "dir1/file3", "dir1/dir2/dir3/file4"], function () {
+        runKuduSyncTestScenario(["file1.bin", "file2", "dir1/file3", "dir1/dir2/dir3/file4"], ["file1.bin", "file2", "dir1/file3", "dir1/dir2/dir3/file4"], null, function () {
 
             // Waiting 1 second for updated file to have a newer modified time
             setTimeout(function () {
-                runKuduSyncTestScenario(["file2", "-dir1/file3", "-dir1/dir2/dir3/file4"], ["file1.bin", "file2", "-dir1/file3", "-dir1/dir2/dir3/file4"], done);
+                runKuduSyncTestScenario(["file2", "-dir1/file3", "-dir1/dir2/dir3/file4"], ["file1.bin", "file2", "-dir1/file3", "-dir1/dir2/dir3/file4"], null, done);
             }, 1000);
         });
     });
 
     test('Single file created then file created only in destination, new file should remain', function (done) {
-        runKuduSyncTestScenario(["file1"], ["file1"], function () {
+        runKuduSyncTestScenario(["file1"], ["file1"], null, function () {
 
             // Generating a file only in the destination directory, this shouldn't be removed
             generateToFile("tofile");
 
-            runKuduSyncTestScenario([], ["file1", "tofile"], done);
+            runKuduSyncTestScenario([], ["file1", "tofile"], null, done);
         });
     });
 
     test('Several files created then file created only in destination, new file should remain', function (done) {
-        runKuduSyncTestScenario(["file1", "dir1/file2"], ["file1", "dir1/file2"], function () {
+        runKuduSyncTestScenario(["file1", "dir1/file2"], ["file1", "dir1/file2"], null, function () {
 
             // Generating files only in the destination directory, those files shouldn't be removed
             generateToFile("dir1/dir2/tofile1");
             generateToFile("dir1/dir2/tofile2");
 
-            runKuduSyncTestScenario(["-file1"], ["-file1", "dir1/file2", "dir1/dir2/tofile1", "dir1/dir2/tofile2"], done);
+            runKuduSyncTestScenario(["-file1"], ["-file1", "dir1/file2", "dir1/dir2/tofile1", "dir1/dir2/tofile2"], null, done);
+        });
+    });
+
+    test('File created then removed (resulting in empty manifest) then added while target has an extra file which should stay', function (done) {
+        runKuduSyncTestScenario(["file1"], ["file1"], null, function () {
+            // Generating files only in the destination directory, those files shouldn't be removed
+            generateToFile("tofile2");
+
+            runKuduSyncTestScenario(["-file1"], ["-file1", "tofile2"], null, function () {
+
+                runKuduSyncTestScenario(["file1"], ["file1", "tofile2"], null, done);
+            });
+        });
+    });
+
+    test('No previous manifest will clean target directory', function (done) {
+        runKuduSyncTestScenario(["file1"], ["file1"], null, function () {
+            // Generating files only in the destination directory, those files shouldn't be removed
+            generateToFile("tofile2");
+
+            runKuduSyncTestScenario(["-file1"], ["-file1", "tofile2"], null, function () {
+                removeManifestFile();
+                runKuduSyncTestScenario(["file1"], ["file1", "-tofile2"], null, done);
+            });
         });
     });
 
     test('Several files should not be sync\'d with whatIf flag set to true', function (done) {
-        runKuduSyncTestScenario(["file1", "file2", "file3"], [], done, /*whatIf*/true);
+        runKuduSyncTestScenario(["file1", "file2", "file3"], [], null, done, /*whatIf*/true);
+    });
+
+    test('Several files and direcotires should not be sync\'d with whatIf flag set to true', function (done) {
+        runKuduSyncTestScenario(["file1", "file2", "dir1/dir2/file3"], [], null, done, /*whatIf*/true);
     });
 
     test('From directory doesn\'t exists should fail', function (done) {
@@ -99,7 +132,7 @@ suite('Kudu Sync Functional Tests', function () {
         var prevManifestPath = pathUtil.join(baseTestTempDir, testDir, "manifest1");
         var nextManifestPath = prevManifestPath;
 
-        ks.kuduSync(from, to, nextManifestPath, prevManifestPath, true)
+        ks.kuduSync(from, to, nextManifestPath, prevManifestPath, null, true)
             .fail(function (err) {
                 try {
                     should.exist(err);
@@ -109,6 +142,105 @@ suite('Kudu Sync Functional Tests', function () {
                     done(e);
                 }
             });
+    });
+
+    test('Ignore files (file2) should not copy them', function (done) {
+        var testedFiles = ["file1", "file2", "file3"];
+        var ignore = "file2";
+        var expectedFiles = ["file1", "-file2", "file3"];
+        runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
+    });
+
+    test('Ignore files (file*) should not copy them', function (done) {
+        var testedFiles = ["file1", "file2", "file3", "bin/more/file4", "bin/more/gile5"];
+        var ignore = "file*";
+        var expectedFiles = ["-file1", "-file2", "-file3", "-bin/more/file4", "bin/more/gile5"];
+        runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
+    });
+
+    test('Ignore files (bin/file*) should not copy them', function (done) {
+        var testedFiles = ["file1", "bin/file2", "bin/gile3", "bin/more/file4"];
+        var ignore = "bin/file*";
+        var expectedFiles = ["file1", "-bin/file2", "bin/gile3", "bin/more/file4"];
+        runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
+    });
+
+    test('Ignore files (bin/**) should not copy them', function (done) {
+        var testedFiles = ["file1", "bin/file2", "bin/gile3", "bin/more/file4"];
+        var ignore = "bin/**";
+        var expectedFiles = ["file1", "-bin/file2", "-bin/gile3", "-bin/more/file4", "bin"];
+        runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
+    });
+
+    test('Ignore files (bin) should not copy them', function (done) {
+        var testedFiles = ["file1", "bin/file2", "bin/gile3", "bin/more/file4"];
+        var ignore = "bin";
+        var expectedFiles = ["file1", "-bin/file2", "-bin/gile3", "-bin/more/file4"];
+        runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
+    });
+
+    test('Ignore files (file1) should not copy them', function (done) {
+        var testedFiles = ["file1", "bin/file2", "bin/gile3", "bin/more/file4"];
+        var ignore = "file1";
+        var expectedFiles = ["-file1", "bin/file2", "bin/gile3", "bin/more/file4"];
+        runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
+    });
+
+    test('Ignore files (file1;file2) should not copy them', function (done) {
+        var testedFiles = ["file1", "bin/file2", "bin/file3", "bin/more/file4"];
+        var ignore = "file1;file2";
+        var expectedFiles = ["-file1", "-bin/file2", "bin/file3", "bin/more/file4"];
+        runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
+    });
+
+    test('Ignore files (file1;bin/file3) should not copy them', function (done) {
+        var testedFiles = ["file1", "bin/file2", "bin/file3", "bin/more/file4", "file5"];
+        var ignore = "file1;bin/file3";
+        var expectedFiles = ["-file1", "bin/file2", "-bin/file3", "bin/more/file4", "file5"];
+        runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
+    });
+
+    test('Ignore files (file1;bin/*) should not copy them', function (done) {
+        var testedFiles = ["file1", "bin/file2", "bin/file3", "bin/more/file4", "file5"];
+        var ignore = "file1;bin/*";
+        var expectedFiles = ["-file1", "-bin/file2", "-bin/file3", "-bin/more/file4", "file5"];
+        runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
+    });
+
+    test('Ignore files added after first sync', function (done) {
+        runKuduSyncTestScenario(["file1", "dir1/file2"], ["file1", "dir1/file2"], null, function () {
+            var testedFiles = ["-file1", "file3", "file4"];
+            var ignore = "file3";
+            var expectedFiles = ["-file1", "dir1/file2", "-file3", "file4"];
+            runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
+        });
+    });
+
+    test('Ignore files removed after first sync', function (done) {
+        runKuduSyncTestScenario(["file1", "dir1/file2"], ["file1", "dir1/file2"], null, function () {
+            var testedFiles = ["-file1", "file3", "file4"];
+            var ignore = "file1";
+            var expectedFiles = ["file1", "dir1/file2", "file3", "file4"];
+            runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
+        });
+    });
+
+    test('Ignore directories added after first sync', function (done) {
+        runKuduSyncTestScenario(["file1", "dir1/file2"], ["file1", "dir1/file2"], null, function () {
+            var testedFiles = ["-file1", "dir1/file3", "file4"];
+            var ignore = "dir1";
+            var expectedFiles = ["-file1", "dir1/file2", "-dir1/file3", "file4"];
+            runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
+        });
+    });
+
+    test('Ignore directories removed after first sync', function (done) {
+        runKuduSyncTestScenario(["file1", "dir1/file2"], ["file1", "dir1/file2"], null, function () {
+            var testedFiles = ["-file1", "-dir1/file2", "dir1/file3", "file4"];
+            var ignore = "dir1";
+            var expectedFiles = ["-file1", "dir1/file2", "-dir1/file3", "file4"];
+            runKuduSyncTestScenario(testedFiles, expectedFiles, ignore, done);
+        });
     });
 
     setup(function () {
@@ -126,10 +258,10 @@ suite('Kudu Sync Functional Tests', function () {
 // 1. Create/update or remove files from updatedFiles on the source path
 // 2. Run the kudu sync function
 // 3. Verify expectedFiles exist (or not exist) in the destination path
-function runKuduSyncTestScenario(updatedFiles, expectedFiles, callback, whatIf) {
+function runKuduSyncTestScenario(updatedFiles, expectedFiles, ignore, callback, whatIf) {
     generateFromFiles(updatedFiles);
 
-    runKuduSync("manifest1", "manifest1", whatIf, function (err) {
+    runKuduSync("manifest1", "manifest1", ignore, whatIf, function (err) {
         if (err) {
             callback(err);
             return;
@@ -148,6 +280,11 @@ function runKuduSyncTestScenario(updatedFiles, expectedFiles, callback, whatIf) 
     });
 }
 
+function removeManifestFile() {
+    var manifestPath = pathUtil.join(baseTestTempDir, testDir, "manifest1");
+    tryRemoveFile(manifestPath);
+}
+
 function incrementTestDir() {
     testDirIndex++;
     testDir = testDirBase + testDirIndex;
@@ -160,7 +297,8 @@ function testFilesShouldBeEqual(files) {
         // Find whether to verify file is there or not
         if (file.indexOf("-") == 0) {
             file = file.substring(1);
-            fs.existsSync(file).should.not.be.ok;
+            var fileFullPath = pathUtil.join(baseTestTempDir, testDir, toDir, file);
+            fs.existsSync(fileFullPath).should.equal(false, "File exists: " + fileFullPath);
         }
         else {
             testFileShouldBeEqual(file);
@@ -175,19 +313,20 @@ function testFileShouldBeEqual(file) {
     filesShouldBeEqual(from, to, file);
 }
 
-function runKuduSync(prevManifestFile, nextManifestFile, whatIf, callback) {
+function runKuduSync(prevManifestFile, nextManifestFile, ignore, whatIf, callback) {
     var from = pathUtil.join(baseTestTempDir, testDir, fromDir);
     var to = pathUtil.join(baseTestTempDir, testDir, toDir);
     var prevManifestPath = pathUtil.join(baseTestTempDir, testDir, prevManifestFile);
     var nextManifestPath = pathUtil.join(baseTestTempDir, testDir, nextManifestFile);
 
-    ks.kuduSync(from, to, nextManifestPath, prevManifestPath, whatIf)
+    ks.kuduSync(from, to, nextManifestPath, prevManifestPath, ignore, whatIf)
       .then(callback, callback);
 }
 
 function generateFromFiles(files) {
     for (var index in files) {
         var file = files[index];
+        file = file.toUpperCase(); // to find casing bugs
         generateFromFile(file);
     }
 }
@@ -223,14 +362,17 @@ function filesShouldBeEqual(fromPath, toPath, fileName) {
     // Only validate content if the from file exists
     var expectedContent = null;
     if (fs.existsSync(fromPath)) {
-        expectedContent = fs.readFileSync(fromPath, 'utf8');
+        var stat = tryGetFileStat(fromPath);
+        if (!stat.isDirectory) {
+            expectedContent = fs.readFileSync(fromPath, 'utf8');
+        }
     }
 
     fileShouldExist(toPath, expectedContent);
 }
 
 function fileShouldExist(path, expectedContent) {
-    should.exist(fs.existsSync(path));
+    fs.existsSync(path).should.equal(true, "File doesn't exist: " + path);
 
     // Validate content if received it
     if (expectedContent != null) {
@@ -243,10 +385,8 @@ function generateFile(path, content) {
     if (content == null) {
         content = randomString();
     }
-
     ensurePathExists(pathUtil.dirname(path));
     fs.writeFileSync(path, content, 'utf8');
-
     return content;
 }
 
@@ -288,6 +428,7 @@ function tryRemoveFile(path) {
         fs.unlinkSync(path);
     }
     catch (e) {
+        console.log(e);
     }
 }
 

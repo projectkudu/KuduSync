@@ -1,7 +1,7 @@
 ///<reference path='directoryInfo.ts'/>
 ///<reference path='manifest.ts'/>
 
-function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, previousManifestPath: string, whatIf: bool) : Promise {
+function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, previousManifestPath: string, ignore: string, whatIf: bool) : Promise {
     Ensure.argNotNull(fromPath, "fromPath");
     Ensure.argNotNull(toPath, "toPath");
     Ensure.argNotNull(nextManifestPath, "nextManifestPath");
@@ -11,10 +11,12 @@ function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, pr
 
     var nextManifest = new Manifest();
 
+    var ignoreList = parseIgnoreList(ignore);
+
     log("Kudu sync from: " + from.path() + " to: " + to.path());
 
     return Manifest.load(previousManifestPath)
-                    .then((manifest) => kuduSyncDirectory(from, to, from.path(), to.path(), manifest, nextManifest, whatIf))
+                    .then((manifest) => kuduSyncDirectory(from, to, from.path(), to.path(), manifest, nextManifest, ignoreList, whatIf))
                     .then(() => {
                         if (!whatIf) {
                             return Manifest.save(nextManifest, nextManifestPath);
@@ -24,11 +26,37 @@ function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, pr
 
 exports.kuduSync = kuduSync;
 
+function parseIgnoreList(ignore: string): string[] {
+    if (!ignore) {
+        return null;
+    }
+
+    return ignore.split(";");
+}
+
+function shouldIgnore(path: string, rootPath: string, ignoreList: string[]): bool {
+    if (!ignoreList) {
+        return false;
+    }
+
+    var relativePath = pathUtil.relative(rootPath, path);
+
+    for (var i = 0; i < ignoreList.length; i++) {
+        var ignore = ignoreList[i];
+        if (minimatch(relativePath, ignore, { matchBase: true, nocase: true })) {
+            log("Ignoring: " + path);
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function copyFile(fromFile: FileInfo, toFilePath: string, whatIf: bool) : Promise {
     Ensure.argNotNull(fromFile, "fromFile");
     Ensure.argNotNull(toFilePath, "toFilePath");
 
-    log("Copy file from: " + fromFile.path() + " to: " + toFilePath);
+    log("Copying file from: " + fromFile.path() + " to: " + toFilePath);
 
     return Utils.attempt(() => {
         try {
@@ -63,8 +91,8 @@ function deleteDirectoryRecursive(directory: DirectoryInfo, whatIf: bool) {
     var path = directory.path();
     log("Deleting directory: " + path);
 
-    var files = directory.files();
-    var subDirectories = directory.subDirectories();
+    var files = directory.filesList();
+    var subDirectories = directory.subDirectoriesList();
 
     // Delete all files under this directory
     return Q.all(Utils.map(files, (file) => deleteFile(file, whatIf)))
@@ -78,7 +106,7 @@ function deleteDirectoryRecursive(directory: DirectoryInfo, whatIf: bool) {
              });
 }
 
-function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath: string, toRootPath: string, manifest: Manifest, outManifest: Manifest, whatIf: bool) {
+function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath: string, toRootPath: string, manifest: Manifest, outManifest: Manifest, ignoreList: string[], whatIf: bool) {
     Ensure.argNotNull(from, "from");
     Ensure.argNotNull(to, "to");
     Ensure.argNotNull(fromRootPath, "fromRootPath");
@@ -91,17 +119,19 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
             return Q.reject(new Error("From directory doesn't exist"));
         }
 
-        // TODO: Generalize files to ignore
-        if (from.isSourceControl() || !pathUtil.relative(from.path(), toRootPath)) {
-            // No need to copy the source control directory (.git).
-            // Or the destination path itself (if contained within the source directory)
+        if (shouldIgnore(from.path(), fromRootPath, ignoreList)) {
+            // Ignore directories in ignore list
             return Q.resolve();
         }
 
-        var fromFiles: FileInfo[] = from.files();
-        var toFiles: FileInfo[] = getFilesConsiderWhatIf(to, whatIf);
-        var fromSubDirectories: DirectoryInfo[] = from.subDirectories();
-        var toSubDirectories: DirectoryInfo[] = getSubDirectoriesConsiderWhatIf(to, whatIf);
+        if (!pathUtil.relative(from.path(), toRootPath)) {
+            // No need to copy the destination path itself (if contained within the source directory)
+            return Q.resolve();
+        }
+
+        if (from.path() != fromRootPath) {
+            outManifest.addFileToManifest(from.path(), fromRootPath);
+        }
 
         // Do the following actions one after the other (serialized)
         return Utils.serialize(
@@ -113,11 +143,11 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
             },
 
             () => {
-                fromFiles = from.files();
-                toFiles = getFilesConsiderWhatIf(to, whatIf);
-                fromSubDirectories = from.subDirectories();
-                toSubDirectories = getSubDirectoriesConsiderWhatIf(to, whatIf);
-                return Q.resolve();
+                to.initializeFilesAndSubDirectoriesLists();
+            },
+
+            () => {
+                from.initializeFilesAndSubDirectoriesLists();
             },
 
             () => {
@@ -125,10 +155,14 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                 // 1. We have no previous directory
                 // 2. We have a previous directory and the file exists there
                 return Q.all(Utils.map(
-                    toFiles,
+                    to.filesList(),
                     (toFile: FileInfo) => {
-                        // TODO: handle case sensitivity
-                        if (!fromFiles[toFile.name()]) {
+                        if (shouldIgnore(toFile.path(), toRootPath, ignoreList)) {
+                            // Ignore files in ignore list
+                            return Q.resolve();
+                        }
+
+                        if (!from.getFile(toFile.name())) {
                             if (manifest.isEmpty() || manifest.isPathInManifest(toFile.path(), toRootPath)) {
                                 return deleteFile(toFile, whatIf);
                             }
@@ -141,19 +175,23 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
             () => {
                 // Copy files
                 return Q.all(Utils.map(
-                    fromFiles,
+                    from.filesList(),
                     (fromFile: FileInfo) => {
-                        outManifest.addFileToManifest(fromFile.path(), fromRootPath);
+                        if (shouldIgnore(fromFile.path(), fromRootPath, ignoreList)) {
+                            // Ignore files in ignore list
+                            return Q.resolve();
+                        }
 
-                        // TODO: Skip deployment files
+                        outManifest.addFileToManifest(fromFile.path(), fromRootPath);
 
                         // if the file exists in the destination then only copy it again if it's
                         // last write time is different than the same file in the source (only if it changed)
-                        var toFile = toFiles[fromFile.name()];
+                        var toFile = to.getFile(fromFile.name());
 
                         if (toFile == null || fromFile.modifiedTime() > toFile.modifiedTime()) {
                             return copyFile(fromFile, pathUtil.join(to.path(), fromFile.name()), whatIf);
                         }
+
                         return Q.resolve();
                     }
                 ));
@@ -161,12 +199,12 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
 
             () => {
                 return Q.all(Utils.map(
-                    toSubDirectories,
+                    to.subDirectoriesList(),
                     (toSubDirectory: DirectoryInfo) => {
                         // If the file doesn't exist in the source, only delete if:
                         // 1. We have no previous directory
                         // 2. We have a previous directory and the file exists there
-                        if (!fromSubDirectories[toSubDirectory.name()]) {
+                        if (!from.getSubDirectory(toSubDirectory.name())) {
                             if (manifest.isEmpty() || manifest.isPathInManifest(toSubDirectory.path(), toRootPath)) {
                                 return deleteDirectoryRecursive(toSubDirectory, whatIf);
                             }
@@ -179,10 +217,8 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
             () => {
                 // Copy directories
                 return Q.all(Utils.map(
-                    fromSubDirectories,
+                    from.subDirectoriesList(),
                     (fromSubDirectory: DirectoryInfo) => {
-                        outManifest.addFileToManifest(fromSubDirectory.path(), fromRootPath);
-
                         var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()));
                         return kuduSyncDirectory(
                             fromSubDirectory,
@@ -191,6 +227,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                             toRootPath,
                             manifest,
                             outManifest,
+                            ignoreList,
                             whatIf);
                     }
                 ));
@@ -199,30 +236,4 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
     catch (err) {
         return Q.reject(err);
      }
-}
-
-function getFilesConsiderWhatIf(dir: DirectoryInfo, whatIf: bool): FileInfo[] {
-    try {
-        return dir.files();
-    }
-    catch (e) {
-        if (whatIf) {
-            return [];
-        }
-
-        throw e;
-    }
-}
-
-function getSubDirectoriesConsiderWhatIf(dir: DirectoryInfo, whatIf: bool): DirectoryInfo[] {
-    try {
-        return dir.subDirectories();
-    }
-    catch (e) {
-        if (whatIf) {
-            return [];
-        }
-
-        throw e;
-    }
 }
