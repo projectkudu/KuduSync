@@ -1,7 +1,7 @@
 {
   "name": "kudusync",
   "author": "Outercurve Foundation",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Tool for syncing files for deployment, will only copy changed files and delete files that doesn't exists in the destination but only if they were part of the previous deployment.",
   "tags": [
     "azure",
