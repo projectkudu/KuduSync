@@ -300,21 +300,23 @@ function deleteDirectoryRecursive(directory, whatIf) {
     Ensure.argNotNull(directory, "directory");
     var path = directory.path();
     log("Deleting directory: " + path);
-    var files = directory.filesList();
-    var subDirectories = directory.subDirectoriesList();
-    return Q.all(Utils.map(files, function (file) {
-        return deleteFile(file, whatIf);
-    })).then(function () {
-        return Q.all(Utils.map(subDirectories, function (subDir) {
-            return deleteDirectoryRecursive(subDir, whatIf);
-        }));
-    }).then(function () {
-        if(!whatIf) {
-            return Utils.attempt(function () {
-                return Q.nfcall(fs.rmdir, path);
-            });
-        }
-        return Q.resolve();
+    return directory.initializeFilesAndSubDirectoriesLists().then(function () {
+        var files = directory.filesList();
+        var subDirectories = directory.subDirectoriesList();
+        return Q.all(Utils.map(files, function (file) {
+            return deleteFile(file, whatIf);
+        })).then(function () {
+            return Q.all(Utils.map(subDirectories, function (subDir) {
+                return deleteDirectoryRecursive(subDir, whatIf);
+            }));
+        }).then(function () {
+            if(!whatIf) {
+                return Utils.attempt(function () {
+                    return Q.nfcall(fs.rmdir, path);
+                });
+            }
+            return Q.resolve();
+        });
     });
 }
 function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outManifest, ignoreList, whatIf) {

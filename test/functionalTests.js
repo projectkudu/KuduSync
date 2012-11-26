@@ -243,6 +243,13 @@ suite('Kudu Sync Functional Tests', function () {
         });
     });
 
+    test('Clean before sync when it\'s the first sync (manifest is empty)', function (done) {
+        generateToFile("dir1/dir2/tofile3");
+        var testedFiles = ["file4", "file5", "file6"];
+        var expectedFiles = ["file4", "file5", "file6", "-dir1/dir2/tofile3"];
+        runKuduSyncTestScenario(testedFiles, expectedFiles, null, done);
+    });
+
     setup(function () {
         // Setting a different test directory per test.
         incrementTestDir();
