@@ -178,7 +178,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                         }
 
                         if (!from.getFile(toFile.name())) {
-                            if (manifest.isEmpty() || manifest.isPathInManifest(toFile.path(), toRootPath)) {
+                            if (manifest.isPathInManifest(toFile.path(), toRootPath)) {
                                 return deleteFile(toFile, whatIf);
                             }
                         }
@@ -220,7 +220,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                         // 1. We have no previous directory
                         // 2. We have a previous directory and the file exists there
                         if (!from.getSubDirectory(toSubDirectory.name())) {
-                            if (manifest.isEmpty() || manifest.isPathInManifest(toSubDirectory.path(), toRootPath)) {
+                            if (manifest.isPathInManifest(toSubDirectory.path(), toRootPath)) {
                                 return deleteDirectoryRecursive(toSubDirectory, whatIf);
                             }
                         }

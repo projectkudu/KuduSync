@@ -3,11 +3,9 @@
 class Manifest {
 
     private _files: string[];
-    private _isEmpty: bool;
 
     constructor () {
         this._files = new string[];
-        this._isEmpty = true;
     }
 
     static load(manifestPath: string) {
@@ -29,7 +27,6 @@ class Manifest {
                         }
                     }
                 );
-                manifest._isEmpty = false;
                 manifest._files = files;
                 return Q.resolve(manifest);
             },
@@ -75,9 +72,5 @@ class Manifest {
 
         var relativePath = pathUtil.relative(rootPath, path);
         this._files[relativePath] = relativePath;
-    }
-
-    isEmpty() {
-        return this._isEmpty;
     }
 }

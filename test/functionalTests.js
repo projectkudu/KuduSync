@@ -97,14 +97,14 @@ suite('Kudu Sync Functional Tests', function () {
         });
     });
 
-    test('No previous manifest will clean target directory', function (done) {
+    test('No previous manifest will not clean target directory', function (done) {
         runKuduSyncTestScenario(["file1"], ["file1"], null, function () {
             // Generating files only in the destination directory, those files shouldn't be removed
             generateToFile("tofile2");
 
             runKuduSyncTestScenario(["-file1"], ["-file1", "tofile2"], null, function () {
                 removeManifestFile();
-                runKuduSyncTestScenario(["file1"], ["file1", "-tofile2"], null, done);
+                runKuduSyncTestScenario(["file1"], ["file1", "tofile2"], null, done);
             });
         });
     });
@@ -237,7 +237,7 @@ suite('Kudu Sync Functional Tests', function () {
     test('Clean before sync when it\'s the first sync (manifest is empty)', function (done) {
         generateToFile("dir1/dir2/tofile3");
         var testedFiles = ["file4", "file5", "file6"];
-        var expectedFiles = ["file4", "file5", "file6", "-dir1/dir2/tofile3"];
+        var expectedFiles = ["file4", "file5", "file6", "dir1/dir2/tofile3"];
         runKuduSyncTestScenario(testedFiles, expectedFiles, null, done);
     });
 

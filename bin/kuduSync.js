@@ -181,7 +181,6 @@ var DirectoryInfo = (function (_super) {
 var Manifest = (function () {
     function Manifest() {
         this._files = new Array();
-        this._isEmpty = true;
     }
     Manifest.load = function load(manifestPath) {
         var manifest = new Manifest();
@@ -197,7 +196,6 @@ var Manifest = (function () {
                     files[file] = file;
                 }
             });
-            manifest._isEmpty = false;
             manifest._files = files;
             return Q.resolve(manifest);
         }, function (err) {
@@ -232,9 +230,6 @@ var Manifest = (function () {
         Ensure.argNotNull(rootPath, "rootPath");
         var relativePath = pathUtil.relative(rootPath, path);
         this._files[relativePath] = relativePath;
-    };
-    Manifest.prototype.isEmpty = function () {
-        return this._isEmpty;
     };
     return Manifest;
 })();
@@ -372,7 +367,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
                     return Q.resolve();
                 }
                 if(!from.getFile(toFile.name())) {
-                    if(manifest.isEmpty() || manifest.isPathInManifest(toFile.path(), toRootPath)) {
+                    if(manifest.isPathInManifest(toFile.path(), toRootPath)) {
                         return deleteFile(toFile, whatIf);
                     }
                 }
@@ -393,7 +388,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
         }, function () {
             return Q.all(Utils.map(to.subDirectoriesList(), function (toSubDirectory) {
                 if(!from.getSubDirectory(toSubDirectory.name())) {
-                    if(manifest.isEmpty() || manifest.isPathInManifest(toSubDirectory.path(), toRootPath)) {
+                    if(manifest.isPathInManifest(toSubDirectory.path(), toRootPath)) {
                         return deleteDirectoryRecursive(toSubDirectory, whatIf);
                     }
                 }
