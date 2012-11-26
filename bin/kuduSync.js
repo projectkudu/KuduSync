@@ -108,7 +108,7 @@ var DirectoryInfo = (function (_super) {
         if(!this.exists()) {
             return this.parent().ensureCreated().then(function () {
                 return Utils.attempt(function () {
-                    return Q.ncall(fs.mkdir, fs, _this.path());
+                    return Q.nfcall(fs.mkdir, _this.path());
                 });
             });
         }
@@ -179,7 +179,7 @@ var Manifest = (function () {
         if(manifestPath == null) {
             return Q.resolve(manifest);
         }
-        return Q.ncall(fs.readFile, fs, manifestPath, 'utf8').then(function (content) {
+        return Q.nfcall(fs.readFile, manifestPath, 'utf8').then(function (content) {
             var filePaths = content.split("\n");
             var files = new Array();
             filePaths.forEach(function (filePath) {
@@ -210,7 +210,7 @@ var Manifest = (function () {
             i++;
         }
         var manifestFileContent = filesForOutput.join("\n");
-        return Q.ncall(fs.writeFile, fs, manifestPath, manifestFileContent, 'utf8');
+        return Q.nfcall(fs.writeFile, manifestPath, manifestFileContent, 'utf8');
     }
     Manifest.prototype.isPathInManifest = function (path, rootPath) {
         Ensure.argNotNull(path, "path");
@@ -291,7 +291,7 @@ function deleteFile(file, whatIf) {
     log("Deleting file: " + path);
     if(!whatIf) {
         return Utils.attempt(function () {
-            return Q.ncall(fs.unlink, fs, path);
+            return Q.nfcall(fs.unlink, path);
         });
     }
     return Q.resolve();
@@ -311,7 +311,7 @@ function deleteDirectoryRecursive(directory, whatIf) {
     }).then(function () {
         if(!whatIf) {
             return Utils.attempt(function () {
-                return Q.ncall(fs.rmdir, fs, path);
+                return Q.nfcall(fs.rmdir, path);
             });
         }
         return Q.resolve();

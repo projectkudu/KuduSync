@@ -18,7 +18,7 @@ class DirectoryInfo extends FileInfoBase {
     ensureCreated() : Promise {
         if (!this.exists()) {
             return this.parent().ensureCreated().then(() => {
-                return Utils.attempt(() => Q.ncall(fs.mkdir, fs, this.path()));
+                return Utils.attempt(() => Q.nfcall(fs.mkdir, this.path()));
             });
         }
         return Q.resolve();

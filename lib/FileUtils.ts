@@ -79,7 +79,7 @@ function deleteFile(file: FileInfo, whatIf: bool) : Promise {
     log("Deleting file: " + path);
 
     if (!whatIf) {
-        return Utils.attempt(() => Q.ncall(fs.unlink, fs, path));
+        return Utils.attempt(() => Q.nfcall(fs.unlink, path));
     }
     
     return Q.resolve();
@@ -100,7 +100,7 @@ function deleteDirectoryRecursive(directory: DirectoryInfo, whatIf: bool) {
             .then(() => {
                 // Delete current directory
                   if (!whatIf) {
-                      return Utils.attempt(() => Q.ncall(fs.rmdir, fs, path));
+                      return Utils.attempt(() => Q.nfcall(fs.rmdir, path));
                   }
                   return Q.resolve();
              });

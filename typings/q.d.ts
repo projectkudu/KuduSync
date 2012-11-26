@@ -21,7 +21,7 @@ interface QStatic {
     reject(value?: any): Promise;
     delay(action: Function, delay: Number): Promise;
     all(...promises: any[]): Promise;
-    ncall(nodeFunction: Function, thisp: any, ...args: any[]);
+    nfcall(nodeFunction: Function, thisp: any, ...args: any[]);
     fcall(nodeFunction: Function, thisp?: any, ...args: any[]);
 }
 

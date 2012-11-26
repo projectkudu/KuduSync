@@ -17,7 +17,7 @@ class Manifest {
             return Q.resolve(manifest);
         }
         
-        return Q.ncall(fs.readFile, fs, manifestPath, 'utf8').then(
+        return Q.nfcall(fs.readFile, manifestPath, 'utf8').then(
             function(content?) {
                 var filePaths = content.split("\n");
                 var files = new string[];
@@ -58,7 +58,7 @@ class Manifest {
         }
 
         var manifestFileContent = filesForOutput.join("\n");
-        return Q.ncall(fs.writeFile, fs, manifestPath, manifestFileContent, 'utf8');
+        return Q.nfcall(fs.writeFile, manifestPath, manifestFileContent, 'utf8');
     }
 
     isPathInManifest(path: string, rootPath: string) {
