@@ -59,14 +59,23 @@ function copyFile(fromFile: FileInfo, toFilePath: string, whatIf: bool) : Promis
     log("Copying file from: " + fromFile.path() + " to: " + toFilePath);
 
     return Utils.attempt(() => {
+        var deffered = Q.defer();
         try {
             if (!whatIf) {
-                fs.createReadStream(fromFile.path()).pipe(fs.createWriteStream(toFilePath));
+                var readStream = fs.createReadStream(fromFile.path());
+                readStream.pipe(fs.createWriteStream(toFilePath));
+                readStream.on("end", () => {
+                    deffered.resolve();
+                });
             }
-            return Q.resolve();
+            else {
+                deffered.resolve();
+            }
+
+            return deffered.promise;
         }
         catch (err) {
-            return Q.reject(err);
+            return deffered.reject(err);
         }
     });
 }

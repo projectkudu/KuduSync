@@ -275,13 +275,20 @@ function copyFile(fromFile, toFilePath, whatIf) {
     Ensure.argNotNull(toFilePath, "toFilePath");
     log("Copying file from: " + fromFile.path() + " to: " + toFilePath);
     return Utils.attempt(function () {
+        var deffered = Q.defer();
         try  {
             if(!whatIf) {
-                fs.createReadStream(fromFile.path()).pipe(fs.createWriteStream(toFilePath));
+                var readStream = fs.createReadStream(fromFile.path());
+                readStream.pipe(fs.createWriteStream(toFilePath));
+                readStream.on("end", function () {
+                    deffered.resolve();
+                });
+            } else {
+                deffered.resolve();
             }
-            return Q.resolve();
+            return deffered.promise;
         } catch (err) {
-            return Q.reject(err);
+            return deffered.reject(err);
         }
     });
 }
