@@ -65,6 +65,9 @@ function copyFile(fromFile: FileInfo, toFilePath: string, whatIf: bool) : Promis
                 var readStream = fs.createReadStream(fromFile.path());
                 readStream.pipe(fs.createWriteStream(toFilePath));
                 readStream.on("end", () => {
+                    // Update the destination modified time to be the same as the source
+                    var toFileStat = fs.statSync(toFilePath);
+                    fs.utimesSync(toFilePath, toFileStat.atime, fromFile.modifiedTime());
                     deffered.resolve();
                 });
             }
@@ -200,7 +203,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                         // last write time is different than the same file in the source (only if it changed)
                         var toFile = to.getFile(fromFile.name());
 
-                        if (toFile == null || fromFile.modifiedTime() > toFile.modifiedTime()) {
+                        if (toFile == null || fromFile.modifiedTime().getTime() !== toFile.modifiedTime().getTime()) {
                             return copyFile(fromFile, pathUtil.join(to.path(), fromFile.name()), whatIf);
                         }
 

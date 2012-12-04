@@ -90,7 +90,7 @@ var FileInfo = (function (_super) {
         this._modifiedTime = modifiedTime;
     }
     FileInfo.prototype.modifiedTime = function () {
-        return this._modifiedTime.getTime();
+        return this._modifiedTime;
     };
     return FileInfo;
 })(FileInfoBase);
@@ -281,6 +281,8 @@ function copyFile(fromFile, toFilePath, whatIf) {
                 var readStream = fs.createReadStream(fromFile.path());
                 readStream.pipe(fs.createWriteStream(toFilePath));
                 readStream.on("end", function () {
+                    var toFileStat = fs.statSync(toFilePath);
+                    fs.utimesSync(toFilePath, toFileStat.atime, fromFile.modifiedTime());
                     deffered.resolve();
                 });
             } else {
@@ -374,7 +376,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
                 }
                 outManifest.addFileToManifest(fromFile.path(), fromRootPath);
                 var toFile = to.getFile(fromFile.name());
-                if(toFile == null || fromFile.modifiedTime() > toFile.modifiedTime()) {
+                if(toFile == null || fromFile.modifiedTime().getTime() !== toFile.modifiedTime().getTime()) {
                     return copyFile(fromFile, pathUtil.join(to.path(), fromFile.name()), whatIf);
                 }
                 return Q.resolve();
