@@ -370,7 +370,7 @@ function filesShouldBeEqual(fromPath, toPath, fileName) {
     var expectedContent = null;
     if (fs.existsSync(fromPath)) {
         var stat = tryGetFileStat(fromPath);
-        if (!stat.isDirectory) {
+        if (!stat.isDirectory()) {
             expectedContent = fs.readFileSync(fromPath, 'utf8');
         }
     }

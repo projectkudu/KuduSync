@@ -12,6 +12,6 @@ class FileInfo extends FileInfoBase {
     }
 
     modifiedTime() {
-        return this._modifiedTime;
+        return this._modifiedTime.getTime();
     }
 }

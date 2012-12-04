@@ -90,7 +90,7 @@ var FileInfo = (function (_super) {
         this._modifiedTime = modifiedTime;
     }
     FileInfo.prototype.modifiedTime = function () {
-        return this._modifiedTime;
+        return this._modifiedTime.getTime();
     };
     return FileInfo;
 })(FileInfoBase);
