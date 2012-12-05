@@ -84,16 +84,29 @@ var __extends = this.__extends || function (d, b) {
 }
 var FileInfo = (function (_super) {
     __extends(FileInfo, _super);
-    function FileInfo(path, modifiedTime) {
+    function FileInfo(path, fileStat) {
         _super.call(this, path);
-        Ensure.argNotNull(modifiedTime, "modifiedTime");
-        this._modifiedTime = modifiedTime;
+        Ensure.argNotNull(fileStat, "fileStat");
+        this._fileStat = fileStat;
     }
     FileInfo.prototype.modifiedTime = function () {
-        return this._modifiedTime;
+        return this._fileStat.mtime;
+    };
+    FileInfo.prototype.size = function () {
+        return this._fileStat.size;
     };
     return FileInfo;
 })(FileInfoBase);
+function fileEquals(file1, file2) {
+    if(file1 == null) {
+        return file2 == null;
+    }
+    if(file1.modifiedTime() == null) {
+        return file2.modifiedTime() == null;
+    }
+    return;
+    file2 != null && file2.modifiedTime() != null && file1.modifiedTime().getTime() === file2.modifiedTime().getTime() && file1.size === file2.size;
+}
 var DirectoryInfo = (function (_super) {
     __extends(DirectoryInfo, _super);
     function DirectoryInfo(path) {
@@ -136,7 +149,7 @@ var DirectoryInfo = (function (_super) {
                             subDirectoriesMapping[fileName.toUpperCase()] = directoryInfo;
                             subDirectoriesList.push(directoryInfo);
                         } else {
-                            var fileInfo = new FileInfo(path, stat.mtime);
+                            var fileInfo = new FileInfo(path, stat);
                             filesMapping[fileName.toUpperCase()] = fileInfo;
                             filesList.push(fileInfo);
                         }
@@ -376,7 +389,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
                 }
                 outManifest.addFileToManifest(fromFile.path(), fromRootPath);
                 var toFile = to.getFile(fromFile.name());
-                if(toFile == null || fromFile.modifiedTime().getTime() !== toFile.modifiedTime().getTime()) {
+                if(toFile == null || !fileEquals(fromFile, toFile)) {
                     return copyFile(fromFile, pathUtil.join(to.path(), fromFile.name()), whatIf);
                 }
                 return Q.resolve();

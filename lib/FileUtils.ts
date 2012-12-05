@@ -203,7 +203,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                         // last write time is different than the same file in the source (only if it changed)
                         var toFile = to.getFile(fromFile.name());
 
-                        if (toFile == null || fromFile.modifiedTime().getTime() !== toFile.modifiedTime().getTime()) {
+                        if (toFile == null || !fileEquals(fromFile, toFile)) {
                             return copyFile(fromFile, pathUtil.join(to.path(), fromFile.name()), whatIf);
                         }
 

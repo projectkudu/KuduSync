@@ -40,20 +40,14 @@ suite('Kudu Sync Functional Tests', function () {
     test('Single file updated should be sync\'d', function (done) {
         runKuduSyncTestScenario(["file1.bin"], ["file1.bin"], null, function () {
 
-            // Waiting 1 second for updated file to have a newer modified time
-            setTimeout(function () {
-                runKuduSyncTestScenario(["file1.bin"], ["file1.bin"], null, done);
-            }, 1000);
+            runKuduSyncTestScenario(["file1.bin"], ["file1.bin"], null, done);
         });
     });
 
     test('Several files updated should be sync\'d', function (done) {
         runKuduSyncTestScenario(["file1.bin", "file2", "dir1/file3", "dir1/dir2/dir3/file4"], ["file1.bin", "file2", "dir1/file3", "dir1/dir2/dir3/file4"], null, function () {
 
-            // Waiting 1 second for updated file to have a newer modified time
-            setTimeout(function () {
-                runKuduSyncTestScenario(["file2", "dir1/file3", "dir1/dir2/dir3/file5", "dir2/file6.txt"], ["file1.bin", "file2", "dir1/file3", "dir1/dir2/dir3/file4", "dir1/dir2/dir3/file5", "dir2/file6.txt"], null, done);
-            }, 1000);
+            runKuduSyncTestScenario(["file2", "dir1/file3", "dir1/dir2/dir3/file5", "dir2/file6.txt"], ["file1.bin", "file2", "dir1/file3", "dir1/dir2/dir3/file4", "dir1/dir2/dir3/file5", "dir2/file6.txt"], null, done);
         });
     });
 
@@ -66,10 +60,7 @@ suite('Kudu Sync Functional Tests', function () {
     test('Several files some created some removed should be sync\'d', function (done) {
         runKuduSyncTestScenario(["file1.bin", "file2", "dir1/file3", "dir1/dir2/dir3/file4"], ["file1.bin", "file2", "dir1/file3", "dir1/dir2/dir3/file4"], null, function () {
 
-            // Waiting 1 second for updated file to have a newer modified time
-            setTimeout(function () {
-                runKuduSyncTestScenario(["file2", "-dir1/file3", "-dir1/dir2/dir3/file4"], ["file1.bin", "file2", "-dir1/file3", "-dir1/dir2/dir3/file4"], null, done);
-            }, 1000);
+            runKuduSyncTestScenario(["file2", "-dir1/file3", "-dir1/dir2/dir3/file4"], ["file1.bin", "file2", "-dir1/file3", "-dir1/dir2/dir3/file4"], null, done);
         });
     });
 

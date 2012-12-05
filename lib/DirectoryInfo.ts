@@ -54,7 +54,7 @@ class DirectoryInfo extends FileInfoBase {
                             }
                             else {
                                 // Store both as mapping as an array
-                                var fileInfo = new FileInfo(path, stat.mtime);
+                                var fileInfo = new FileInfo(path, stat);
                                 filesMapping[fileName.toUpperCase()] = fileInfo;
                                 filesList.push(fileInfo);
                             }

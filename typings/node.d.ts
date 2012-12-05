@@ -75,6 +75,20 @@ declare var Buffer: {
 *                                               *
 ************************************************/
 
+interface FileStat {
+    dev: number;
+    mode: number;
+    nlink: number;
+    uid: number;
+    gid: number;
+    rdev: number;
+    ino: number;
+    size: number;
+    atime: Date;
+    mtime: Date;
+    ctime: Date;
+}
+
 interface EventEmitter {
     addListener(event: string, listener: Function);
     on(event: string, listener: Function);
