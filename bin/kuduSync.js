@@ -95,18 +95,14 @@ var FileInfo = (function (_super) {
     FileInfo.prototype.size = function () {
         return this._fileStat.size;
     };
+    FileInfo.prototype.equals = function (otherFile) {
+        if(this._fileStat == null || otherFile._fileStat == null || this.modifiedTime() == null || otherFile.modifiedTime() == null) {
+            return false;
+        }
+        return this.modifiedTime().getTime() === otherFile.modifiedTime().getTime() && this.size() === otherFile.size();
+    };
     return FileInfo;
 })(FileInfoBase);
-function fileEquals(file1, file2) {
-    if(file1 == null) {
-        return file2 == null;
-    }
-    if(file1.modifiedTime() == null) {
-        return file2.modifiedTime() == null;
-    }
-    return;
-    file2 != null && file2.modifiedTime() != null && file1.modifiedTime().getTime() === file2.modifiedTime().getTime() && file1.size === file2.size;
-}
 var DirectoryInfo = (function (_super) {
     __extends(DirectoryInfo, _super);
     function DirectoryInfo(path) {
@@ -389,7 +385,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
                 }
                 outManifest.addFileToManifest(fromFile.path(), fromRootPath);
                 var toFile = to.getFile(fromFile.name());
-                if(toFile == null || !fileEquals(fromFile, toFile)) {
+                if(toFile == null || !fromFile.equals(toFile)) {
                     return copyFile(fromFile, pathUtil.join(to.path(), fromFile.name()), whatIf);
                 }
                 return Q.resolve();
