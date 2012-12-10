@@ -58,29 +58,44 @@ function copyFile(fromFile: FileInfo, toFilePath: string, whatIf: bool) : Promis
 
     log("Copying file from: " + fromFile.path() + " to: " + toFilePath);
 
-    return Utils.attempt(() => {
-        var deffered = Q.defer();
-        try {
-            if (!whatIf) {
-                var readStream = fs.createReadStream(fromFile.path());
-                readStream.pipe(fs.createWriteStream(toFilePath));
-                readStream.on("end", () => {
-                    // Update the destination modified time to be the same as the source
-                    var toFileStat = fs.statSync(toFilePath);
-                    fs.utimesSync(toFilePath, toFileStat.atime, fromFile.modifiedTime());
-                    deffered.resolve();
-                });
-            }
-            else {
-                deffered.resolve();
-            }
+    if (!whatIf) {
+        return Utils.attempt(() => {
+            var promise = copyFileInternal(fromFile, toFilePath);
+            promise = promise.then(() => {
+                return Q.nfcall(fs.stat, toFilePath);
+            });
+            promise = promise.then(function (toFileStat?: any) {
+                return Q.nfcall(fs.utimes, toFilePath, toFileStat.atime, fromFile.modifiedTime());
+            }, null);
 
-            return deffered.promise;
-        }
-        catch (err) {
-            return deffered.reject(err);
-        }
-    });
+            return promise;
+        });
+    }
+
+    return Q.resolve();
+}
+
+function copyFileInternal(fromFile: FileInfo, toFilePath: string): Promise {
+    var deffered = Q.defer();
+    try {
+        var readStream = fs.createReadStream(fromFile.path());
+        var writeStream = fs.createWriteStream(toFilePath);
+        readStream.pipe(writeStream);
+        readStream.on("end", () => {
+            deffered.resolve();
+        });
+        readStream.on("error", (err) => {
+            deffered.reject(err);
+        });
+        writeStream.on("error", (err) => {
+            deffered.reject(err);
+        });
+    }
+    catch (err) {
+        deffered.reject(err);
+    }
+
+    return deffered.promise;
 }
 
 function deleteFile(file: FileInfo, whatIf: bool) : Promise {
@@ -169,7 +184,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                 // If the file doesn't exist in the source, only delete if:
                 // 1. We have no previous directory
                 // 2. We have a previous directory and the file exists there
-                return Q.all(Utils.map(
+                return Utils.mapSerialized(
                     to.filesList(),
                     (toFile: FileInfo) => {
                         if (shouldIgnore(toFile.path(), toRootPath, ignoreList)) {
@@ -184,12 +199,12 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                         }
                         return Q.resolve();
                     }
-                ));
+                );
             },
 
             () => {
                 // Copy files
-                return Q.all(Utils.map(
+                return Utils.mapSerialized(
                     from.filesList(),
                     (fromFile: FileInfo) => {
                         if (shouldIgnore(fromFile.path(), fromRootPath, ignoreList)) {
@@ -209,11 +224,11 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
 
                         return Q.resolve();
                     }
-                ));
+                );
             },
 
             () => {
-                return Q.all(Utils.map(
+                return Utils.mapSerialized(
                     to.subDirectoriesList(),
                     (toSubDirectory: DirectoryInfo) => {
                         // If the file doesn't exist in the source, only delete if:
@@ -226,12 +241,12 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                         }
                         return Q.resolve();
                     }
-                ));
+                );
             },
 
             () => {
                 // Copy directories
-                return Q.all(Utils.map(
+                return Utils.mapSerialized(
                     from.subDirectoriesList(),
                     (fromSubDirectory: DirectoryInfo) => {
                         var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()));
@@ -245,7 +260,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                             ignoreList,
                             whatIf);
                     }
-                ));
+                );
             });
     }
     catch (err) {
