@@ -57,6 +57,24 @@ var Utils;
         return result;
     }
     Utils.serialize = serialize;
+    function mapSerialized(source, action) {
+        var result = Q.resolve();
+        for(var i = 0; i < source.length; i++) {
+            var func = {
+                source: source[i],
+                index: i,
+                action: function () {
+                    var self = this;
+                    return function () {
+                        return action(self.source, self.index);
+                    }
+                }
+            };
+            result = result.then(func.action());
+        }
+        return result;
+    }
+    Utils.mapSerialized = mapSerialized;
 })(Utils || (Utils = {}));
 
 exports.Utils = Utils;
@@ -278,25 +296,33 @@ function copyFile(fromFile, toFilePath, whatIf) {
     Ensure.argNotNull(fromFile, "fromFile");
     Ensure.argNotNull(toFilePath, "toFilePath");
     log("Copying file from: " + fromFile.path() + " to: " + toFilePath);
-    return Utils.attempt(function () {
-        var deffered = Q.defer();
-        try  {
-            if(!whatIf) {
-                var readStream = fs.createReadStream(fromFile.path());
-                readStream.pipe(fs.createWriteStream(toFilePath));
-                readStream.on("end", function () {
-                    var toFileStat = fs.statSync(toFilePath);
-                    fs.utimesSync(toFilePath, toFileStat.atime, fromFile.modifiedTime());
-                    deffered.resolve();
-                });
-            } else {
-                deffered.resolve();
-            }
-            return deffered.promise;
-        } catch (err) {
-            return deffered.reject(err);
-        }
-    });
+    if(!whatIf) {
+        return Utils.attempt(function () {
+            var promise = copyFileInternal(fromFile, toFilePath);
+            promise = promise.then(function () {
+                return Q.nfcall(fs.stat, toFilePath);
+            });
+            promise = promise.then(function (toFileStat) {
+                return Q.nfcall(fs.utimes, toFilePath, toFileStat.atime, fromFile.modifiedTime());
+            }, null);
+            return promise;
+        });
+    }
+    return Q.resolve();
+}
+function copyFileInternal(fromFile, toFilePath) {
+    var deffered = Q.defer();
+    try  {
+        var readStream = fs.createReadStream(fromFile.path());
+        var writeStream = fs.createWriteStream(toFilePath);
+        readStream.pipe(writeStream);
+        readStream.on("end", deffered.resolve);
+        readStream.on("error", deffered.reject);
+        writeStream.on("error", deffered.reject);
+    } catch (err) {
+        deffered.reject(err);
+    }
+    return deffered.promise;
 }
 function deleteFile(file, whatIf) {
     Ensure.argNotNull(file, "file");
@@ -316,12 +342,12 @@ function deleteDirectoryRecursive(directory, whatIf) {
     return directory.initializeFilesAndSubDirectoriesLists().then(function () {
         var files = directory.filesList();
         var subDirectories = directory.subDirectoriesList();
-        return Q.all(Utils.map(files, function (file) {
+        return Utils.mapSerialized(files, function (file) {
             return deleteFile(file, whatIf);
-        })).then(function () {
-            return Q.all(Utils.map(subDirectories, function (subDir) {
+        }).then(function () {
+            return Utils.mapSerialized(subDirectories, function (subDir) {
                 return deleteDirectoryRecursive(subDir, whatIf);
-            }));
+            });
         }).then(function () {
             if(!whatIf) {
                 return Utils.attempt(function () {
@@ -362,7 +388,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
         }, function () {
             from.initializeFilesAndSubDirectoriesLists();
         }, function () {
-            return Q.all(Utils.map(to.filesList(), function (toFile) {
+            return Utils.mapSerialized(to.filesList(), function (toFile) {
                 if(shouldIgnore(toFile.path(), toRootPath, ignoreList)) {
                     return Q.resolve();
                 }
@@ -372,9 +398,9 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
                     }
                 }
                 return Q.resolve();
-            }));
+            });
         }, function () {
-            return Q.all(Utils.map(from.filesList(), function (fromFile) {
+            return Utils.mapSerialized(from.filesList(), function (fromFile) {
                 if(shouldIgnore(fromFile.path(), fromRootPath, ignoreList)) {
                     return Q.resolve();
                 }
@@ -384,21 +410,21 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
                     return copyFile(fromFile, pathUtil.join(to.path(), fromFile.name()), whatIf);
                 }
                 return Q.resolve();
-            }));
+            });
         }, function () {
-            return Q.all(Utils.map(to.subDirectoriesList(), function (toSubDirectory) {
+            return Utils.mapSerialized(to.subDirectoriesList(), function (toSubDirectory) {
                 if(!from.getSubDirectory(toSubDirectory.name())) {
                     if(manifest.isPathInManifest(toSubDirectory.path(), toRootPath)) {
                         return deleteDirectoryRecursive(toSubDirectory, whatIf);
                     }
                 }
                 return Q.resolve();
-            }));
+            });
         }, function () {
-            return Q.all(Utils.map(from.subDirectoriesList(), function (fromSubDirectory) {
+            return Utils.mapSerialized(from.subDirectoriesList(), function (fromSubDirectory) {
                 var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()));
                 return kuduSyncDirectory(fromSubDirectory, toSubDirectory, fromRootPath, toRootPath, manifest, outManifest, ignoreList, whatIf);
-            }));
+            });
         });
     } catch (err) {
         return Q.reject(err);

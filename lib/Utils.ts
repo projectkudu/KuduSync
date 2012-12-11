@@ -31,12 +31,32 @@ module Utils {
         
         return results;
     }
-    
+
     export function serialize(...source: {(): Promise; }[]) : Promise {
         var result = Q.resolve();
         for (var i = 0; i < source.length; i++) {
             result = result.then(source[i]);
         }
+        return result;
+    }
+
+    export function mapSerialized(source: any[], action: (element: any, index: Number) => Promise) : Promise {
+        var result = Q.resolve();
+        for (var i = 0; i < source.length; i++) {
+            var func: any = {
+                source: source[i],
+                index: i,
+                action: function () {
+                    var self = this;
+                    return function () {
+                        return action(self.source, self.index);
+                    }
+                }
+            };
+
+            result = result.then(func.action());
+        }
+
         return result;
     }
 }
