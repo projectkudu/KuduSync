@@ -81,15 +81,9 @@ function copyFileInternal(fromFile: FileInfo, toFilePath: string): Promise {
         var readStream = fs.createReadStream(fromFile.path());
         var writeStream = fs.createWriteStream(toFilePath);
         readStream.pipe(writeStream);
-        readStream.on("end", () => {
-            deffered.resolve();
-        });
-        readStream.on("error", (err) => {
-            deffered.reject(err);
-        });
-        writeStream.on("error", (err) => {
-            deffered.reject(err);
-        });
+        readStream.on("end", deffered.resolve);
+        readStream.on("error", deffered.reject);
+        writeStream.on("error", deffered.reject);
     }
     catch (err) {
         deffered.reject(err);
@@ -124,8 +118,8 @@ function deleteDirectoryRecursive(directory: DirectoryInfo, whatIf: bool) {
             var subDirectories = directory.subDirectoriesList();
 
             // Delete all files under this directory
-            return Q.all(Utils.map(files, (file) => deleteFile(file, whatIf)))
-                    .then(() => Q.all(Utils.map(subDirectories, (subDir) => deleteDirectoryRecursive(subDir, whatIf))))
+            return Utils.mapSerialized(files, (file) => deleteFile(file, whatIf))
+                    .then(() => Utils.mapSerialized(subDirectories, (subDir) => deleteDirectoryRecursive(subDir, whatIf)))
                     .then(() => {
                         // Delete current directory
                         if (!whatIf) {

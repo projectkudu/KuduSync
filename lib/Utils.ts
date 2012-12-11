@@ -43,15 +43,16 @@ module Utils {
     export function mapSerialized(source: any[], action: (element: any, index: Number) => Promise) : Promise {
         var result = Q.resolve();
         for (var i = 0; i < source.length; i++) {
-            var func: any = {};
-            func.source = source[i];
-            func.i = i;
-            func.action = function () {
-                var self = this;
-                return function () {
-                    return action(self.source, self.i);
+            var func: any = {
+                source: source[i],
+                index: i,
+                action: function () {
+                    var self = this;
+                    return function () {
+                        return action(self.source, self.index);
+                    }
                 }
-            }
+            };
 
             result = result.then(func.action());
         }

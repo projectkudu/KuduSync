@@ -61,13 +61,13 @@ var Utils;
         var result = Q.resolve();
         for(var i = 0; i < source.length; i++) {
             var func = {
-            };
-            func.source = source[i];
-            func.i = i;
-            func.action = function () {
-                var self = this;
-                return function () {
-                    return action(self.source, self.i);
+                source: source[i],
+                index: i,
+                action: function () {
+                    var self = this;
+                    return function () {
+                        return action(self.source, self.index);
+                    }
                 }
             };
             result = result.then(func.action());
@@ -316,15 +316,9 @@ function copyFileInternal(fromFile, toFilePath) {
         var readStream = fs.createReadStream(fromFile.path());
         var writeStream = fs.createWriteStream(toFilePath);
         readStream.pipe(writeStream);
-        readStream.on("end", function () {
-            deffered.resolve();
-        });
-        readStream.on("error", function (err) {
-            deffered.reject(err);
-        });
-        writeStream.on("error", function (err) {
-            deffered.reject(err);
-        });
+        readStream.on("end", deffered.resolve);
+        readStream.on("error", deffered.reject);
+        writeStream.on("error", deffered.reject);
     } catch (err) {
         deffered.reject(err);
     }
@@ -348,12 +342,12 @@ function deleteDirectoryRecursive(directory, whatIf) {
     return directory.initializeFilesAndSubDirectoriesLists().then(function () {
         var files = directory.filesList();
         var subDirectories = directory.subDirectoriesList();
-        return Q.all(Utils.map(files, function (file) {
+        return Utils.mapSerialized(files, function (file) {
             return deleteFile(file, whatIf);
-        })).then(function () {
-            return Q.all(Utils.map(subDirectories, function (subDir) {
+        }).then(function () {
+            return Utils.mapSerialized(subDirectories, function (subDir) {
                 return deleteDirectoryRecursive(subDir, whatIf);
-            }));
+            });
         }).then(function () {
             if(!whatIf) {
                 return Utils.attempt(function () {
