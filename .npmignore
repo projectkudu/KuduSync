@@ -7,3 +7,4 @@ node_modules/
 lib/*.js
 build.cmd
 *.map
+npmpublish.cmd
