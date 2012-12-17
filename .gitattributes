@@ -47,3 +47,5 @@
 *.fsproj text=auto
 *.dbproj text=auto
 *.sln text=auto eol=crlf
+
+bin/* eol=lf
