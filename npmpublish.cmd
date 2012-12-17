@@ -42,7 +42,7 @@ echo Trying to install KuduSync
 call npm install . -g
 IF %ERRORLEVEL% NEQ 0 goto error
 
-echp Publishing KuduSync
+echo Publishing KuduSync
 call npm publish
 IF %ERRORLEVEL% NEQ 0 goto error
 
