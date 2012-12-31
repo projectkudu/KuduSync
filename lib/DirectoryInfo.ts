@@ -29,8 +29,6 @@ class DirectoryInfo extends FileInfoBase {
     }
 
     initializeFilesAndSubDirectoriesLists() : Promise {
-        var self = this;
-
         var filesMapping = new FileInfo[];
         var filesList = new FileInfo[];
         var subDirectoriesMapping = new DirectoryInfo[];
@@ -41,9 +39,8 @@ class DirectoryInfo extends FileInfoBase {
                 try {
                     // TODO: Consider changing this call to async
                     var files = fs.readdirSync(this.path());
-                    files.forEach(
-                        function (fileName: string) {
-                            var path = pathUtil.join(self.path(), fileName);
+                    files.forEach((fileName: string) => {
+                            var path = pathUtil.join(this.path(), fileName);
                             var stat = fs.statSync(path);
 
                             if (stat.isDirectory()) {

@@ -1,6 +1,8 @@
 ///<reference path='directoryInfo.ts'/>
 ///<reference path='manifest.ts'/>
 
+var defaultParallelActions = 5;
+
 function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, previousManifestPath: string, ignore: string, whatIf: bool) : Promise {
     Ensure.argNotNull(fromPath, "fromPath");
     Ensure.argNotNull(toPath, "toPath");
@@ -118,8 +120,8 @@ function deleteDirectoryRecursive(directory: DirectoryInfo, whatIf: bool) {
             var subDirectories = directory.subDirectoriesList();
 
             // Delete all files under this directory
-            return Utils.mapSerialized(files, (file) => deleteFile(file, whatIf))
-                    .then(() => Utils.mapSerialized(subDirectories, (subDir) => deleteDirectoryRecursive(subDir, whatIf)))
+            return Utils.mapParallelized(defaultParallelActions, files, (file) => deleteFile(file, whatIf))
+                    .then(() => Utils.mapParallelized(defaultParallelActions, subDirectories, (subDir) => deleteDirectoryRecursive(subDir, whatIf)))
                     .then(() => {
                         // Delete current directory
                         if (!whatIf) {
@@ -167,18 +169,19 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
             },
 
             () => {
-                to.initializeFilesAndSubDirectoriesLists();
+                return to.initializeFilesAndSubDirectoriesLists();
             },
 
             () => {
-                from.initializeFilesAndSubDirectoriesLists();
+                return from.initializeFilesAndSubDirectoriesLists();
             },
 
             () => {
                 // If the file doesn't exist in the source, only delete if:
                 // 1. We have no previous directory
                 // 2. We have a previous directory and the file exists there
-                return Utils.mapSerialized(
+                return Utils.mapParallelized(
+                    defaultParallelActions,
                     to.filesList(),
                     (toFile: FileInfo) => {
                         if (shouldIgnore(toFile.path(), toRootPath, ignoreList)) {
@@ -198,7 +201,8 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
 
             () => {
                 // Copy files
-                return Utils.mapSerialized(
+                return Utils.mapParallelized(
+                    defaultParallelActions,
                     from.filesList(),
                     (fromFile: FileInfo) => {
                         if (shouldIgnore(fromFile.path(), fromRootPath, ignoreList)) {
@@ -222,7 +226,8 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
             },
 
             () => {
-                return Utils.mapSerialized(
+                return Utils.mapParallelized(
+                    defaultParallelActions,
                     to.subDirectoriesList(),
                     (toSubDirectory: DirectoryInfo) => {
                         // If the file doesn't exist in the source, only delete if:
@@ -240,7 +245,8 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
 
             () => {
                 // Copy directories
-                return Utils.mapSerialized(
+                return Utils.mapParallelized(
+                    defaultParallelActions,
                     from.subDirectoriesList(),
                     (fromSubDirectory: DirectoryInfo) => {
                         var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()));

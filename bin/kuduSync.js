@@ -75,6 +75,39 @@ var Utils;
         return result;
     }
     Utils.mapSerialized = mapSerialized;
+    function mapParallelized(maxParallel, source, action) {
+        var parallelOperations = [];
+        var result = Q.resolve();
+        for(var i = 0; i < source.length; i++) {
+            var singleOperation = {
+                source: source[i],
+                index: i,
+                action: function () {
+                    return action(this.source, this.index);
+                }
+            };
+            parallelOperations.push(singleOperation);
+            if((i % maxParallel) == (maxParallel - 1) || i == (source.length - 1)) {
+                var complexOperation = {
+                    parallelOperations: parallelOperations,
+                    action: function () {
+                        var self = this;
+                        return function () {
+                            var promises = [];
+                            for(var j = 0; j < self.parallelOperations.length; j++) {
+                                promises.push(self.parallelOperations[j].action());
+                            }
+                            return Q.all(promises);
+                        }
+                    }
+                };
+                result = result.then(complexOperation.action());
+                parallelOperations = [];
+            }
+        }
+        return result;
+    }
+    Utils.mapParallelized = mapParallelized;
 })(Utils || (Utils = {}));
 
 exports.Utils = Utils;
@@ -146,7 +179,6 @@ var DirectoryInfo = (function (_super) {
     };
     DirectoryInfo.prototype.initializeFilesAndSubDirectoriesLists = function () {
         var _this = this;
-        var self = this;
         var filesMapping = new Array();
         var filesList = new Array();
         var subDirectoriesMapping = new Array();
@@ -156,7 +188,7 @@ var DirectoryInfo = (function (_super) {
                 try  {
                     var files = fs.readdirSync(_this.path());
                     files.forEach(function (fileName) {
-                        var path = pathUtil.join(self.path(), fileName);
+                        var path = pathUtil.join(_this.path(), fileName);
                         var stat = fs.statSync(path);
                         if(stat.isDirectory()) {
                             var directoryInfo = new DirectoryInfo(path);
@@ -251,6 +283,7 @@ var Manifest = (function () {
     };
     return Manifest;
 })();
+var defaultParallelActions = 5;
 function kuduSync(fromPath, toPath, nextManifestPath, previousManifestPath, ignore, whatIf) {
     Ensure.argNotNull(fromPath, "fromPath");
     Ensure.argNotNull(toPath, "toPath");
@@ -342,10 +375,10 @@ function deleteDirectoryRecursive(directory, whatIf) {
     return directory.initializeFilesAndSubDirectoriesLists().then(function () {
         var files = directory.filesList();
         var subDirectories = directory.subDirectoriesList();
-        return Utils.mapSerialized(files, function (file) {
+        return Utils.mapParallelized(defaultParallelActions, files, function (file) {
             return deleteFile(file, whatIf);
         }).then(function () {
-            return Utils.mapSerialized(subDirectories, function (subDir) {
+            return Utils.mapParallelized(defaultParallelActions, subDirectories, function (subDir) {
                 return deleteDirectoryRecursive(subDir, whatIf);
             });
         }).then(function () {
@@ -384,11 +417,11 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
             }
             return Q.resolve();
         }, function () {
-            to.initializeFilesAndSubDirectoriesLists();
+            return to.initializeFilesAndSubDirectoriesLists();
         }, function () {
-            from.initializeFilesAndSubDirectoriesLists();
+            return from.initializeFilesAndSubDirectoriesLists();
         }, function () {
-            return Utils.mapSerialized(to.filesList(), function (toFile) {
+            return Utils.mapParallelized(defaultParallelActions, to.filesList(), function (toFile) {
                 if(shouldIgnore(toFile.path(), toRootPath, ignoreList)) {
                     return Q.resolve();
                 }
@@ -400,7 +433,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
                 return Q.resolve();
             });
         }, function () {
-            return Utils.mapSerialized(from.filesList(), function (fromFile) {
+            return Utils.mapParallelized(defaultParallelActions, from.filesList(), function (fromFile) {
                 if(shouldIgnore(fromFile.path(), fromRootPath, ignoreList)) {
                     return Q.resolve();
                 }
@@ -412,7 +445,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
                 return Q.resolve();
             });
         }, function () {
-            return Utils.mapSerialized(to.subDirectoriesList(), function (toSubDirectory) {
+            return Utils.mapParallelized(defaultParallelActions, to.subDirectoriesList(), function (toSubDirectory) {
                 if(!from.getSubDirectory(toSubDirectory.name())) {
                     if(manifest.isPathInManifest(toSubDirectory.path(), toRootPath)) {
                         return deleteDirectoryRecursive(toSubDirectory, whatIf);
@@ -421,7 +454,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
                 return Q.resolve();
             });
         }, function () {
-            return Utils.mapSerialized(from.subDirectoriesList(), function (fromSubDirectory) {
+            return Utils.mapParallelized(defaultParallelActions, from.subDirectoriesList(), function (fromSubDirectory) {
                 var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()));
                 return kuduSyncDirectory(fromSubDirectory, toSubDirectory, fromRootPath, toRootPath, manifest, outManifest, ignoreList, whatIf);
             });
