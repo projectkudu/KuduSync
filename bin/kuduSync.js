@@ -283,7 +283,7 @@ var Manifest = (function () {
     };
     return Manifest;
 })();
-var defaultParallelActions = 5;
+var defaultParallelActions = 10;
 function kuduSync(fromPath, toPath, nextManifestPath, previousManifestPath, ignore, whatIf) {
     Ensure.argNotNull(fromPath, "fromPath");
     Ensure.argNotNull(toPath, "toPath");
@@ -454,7 +454,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
                 return Q.resolve();
             });
         }, function () {
-            return Utils.mapParallelized(defaultParallelActions, from.subDirectoriesList(), function (fromSubDirectory) {
+            return Utils.mapSerialized(from.subDirectoriesList(), function (fromSubDirectory) {
                 var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()));
                 return kuduSyncDirectory(fromSubDirectory, toSubDirectory, fromRootPath, toRootPath, manifest, outManifest, ignoreList, whatIf);
             });
