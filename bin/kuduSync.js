@@ -283,7 +283,7 @@ var Manifest = (function () {
     };
     return Manifest;
 })();
-var defaultParallelActions = 10;
+var defaultParallelActions = 5;
 function kuduSync(fromPath, toPath, nextManifestPath, previousManifestPath, ignore, whatIf) {
     Ensure.argNotNull(fromPath, "fromPath");
     Ensure.argNotNull(toPath, "toPath");
@@ -421,7 +421,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
         }, function () {
             return from.initializeFilesAndSubDirectoriesLists();
         }, function () {
-            return Utils.mapParallelized(defaultParallelActions, to.filesList(), function (toFile) {
+            return Utils.mapSerialized(to.filesList(), function (toFile) {
                 if(shouldIgnore(toFile.path(), toRootPath, ignoreList)) {
                     return Q.resolve();
                 }
@@ -433,7 +433,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
                 return Q.resolve();
             });
         }, function () {
-            return Utils.mapParallelized(defaultParallelActions, from.filesList(), function (fromFile) {
+            return Utils.mapSerialized(from.filesList(), function (fromFile) {
                 if(shouldIgnore(fromFile.path(), fromRootPath, ignoreList)) {
                     return Q.resolve();
                 }
@@ -445,7 +445,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
                 return Q.resolve();
             });
         }, function () {
-            return Utils.mapParallelized(defaultParallelActions, to.subDirectoriesList(), function (toSubDirectory) {
+            return Utils.mapSerialized(to.subDirectoriesList(), function (toSubDirectory) {
                 if(!from.getSubDirectory(toSubDirectory.name())) {
                     if(manifest.isPathInManifest(toSubDirectory.path(), toRootPath)) {
                         return deleteDirectoryRecursive(toSubDirectory, whatIf);
@@ -454,7 +454,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
                 return Q.resolve();
             });
         }, function () {
-            return Utils.mapSerialized(from.subDirectoriesList(), function (fromSubDirectory) {
+            return Utils.mapParallelized(defaultParallelActions, from.subDirectoriesList(), function (fromSubDirectory) {
                 var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()));
                 return kuduSyncDirectory(fromSubDirectory, toSubDirectory, fromRootPath, toRootPath, manifest, outManifest, ignoreList, whatIf);
             });

@@ -1,7 +1,7 @@
 ///<reference path='directoryInfo.ts'/>
 ///<reference path='manifest.ts'/>
 
-var defaultParallelActions = 10;
+var defaultParallelActions = 5;
 
 function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, previousManifestPath: string, ignore: string, whatIf: bool) : Promise {
     Ensure.argNotNull(fromPath, "fromPath");
@@ -180,8 +180,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                 // If the file doesn't exist in the source, only delete if:
                 // 1. We have no previous directory
                 // 2. We have a previous directory and the file exists there
-                return Utils.mapParallelized(
-                    defaultParallelActions,
+                return Utils.mapSerialized(
                     to.filesList(),
                     (toFile: FileInfo) => {
                         if (shouldIgnore(toFile.path(), toRootPath, ignoreList)) {
@@ -201,8 +200,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
 
             () => {
                 // Copy files
-                return Utils.mapParallelized(
-                    defaultParallelActions,
+                return Utils.mapSerialized(
                     from.filesList(),
                     (fromFile: FileInfo) => {
                         if (shouldIgnore(fromFile.path(), fromRootPath, ignoreList)) {
@@ -226,8 +224,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
             },
 
             () => {
-                return Utils.mapParallelized(
-                    defaultParallelActions,
+                return Utils.mapSerialized(
                     to.subDirectoriesList(),
                     (toSubDirectory: DirectoryInfo) => {
                         // If the file doesn't exist in the source, only delete if:
@@ -245,7 +242,8 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
 
             () => {
                 // Copy directories
-                return Utils.mapSerialized(
+                return Utils.mapParallelized(
+                    defaultParallelActions,
                     from.subDirectoriesList(),
                     (fromSubDirectory: DirectoryInfo) => {
                         var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()));
