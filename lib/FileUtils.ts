@@ -1,8 +1,6 @@
 ///<reference path='directoryInfo.ts'/>
 ///<reference path='manifest.ts'/>
 
-var defaultParallelActions = 5;
-
 function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, previousManifestPath: string, ignore: string, whatIf: bool) : Promise {
     Ensure.argNotNull(fromPath, "fromPath");
     Ensure.argNotNull(toPath, "toPath");
@@ -63,11 +61,8 @@ function copyFile(fromFile: FileInfo, toFilePath: string, whatIf: bool) : Promis
     if (!whatIf) {
         return Utils.attempt(() => {
             var promise = copyFileInternal(fromFile, toFilePath);
-            promise = promise.then(() => {
-                return Q.nfcall(fs.stat, toFilePath);
-            });
-            promise = promise.then(function (toFileStat?: any) {
-                return Q.nfcall(fs.utimes, toFilePath, toFileStat.atime, fromFile.modifiedTime());
+            promise = promise.then(function () {
+                return Q.nfcall(fs.utimes, toFilePath, new Date(), fromFile.modifiedTime());
             }, null);
 
             return promise;
@@ -83,9 +78,9 @@ function copyFileInternal(fromFile: FileInfo, toFilePath: string): Promise {
         var readStream = fs.createReadStream(fromFile.path());
         var writeStream = fs.createWriteStream(toFilePath);
         readStream.pipe(writeStream);
-        readStream.on("end", deffered.resolve);
         readStream.on("error", deffered.reject);
         writeStream.on("error", deffered.reject);
+        writeStream.on("close", deffered.resolve);
     }
     catch (err) {
         deffered.reject(err);
@@ -120,8 +115,8 @@ function deleteDirectoryRecursive(directory: DirectoryInfo, whatIf: bool) {
             var subDirectories = directory.subDirectoriesList();
 
             // Delete all files under this directory
-            return Utils.mapParallelized(defaultParallelActions, files, (file) => deleteFile(file, whatIf))
-                    .then(() => Utils.mapParallelized(defaultParallelActions, subDirectories, (subDir) => deleteDirectoryRecursive(subDir, whatIf)))
+            return Utils.mapSerialized(files, (file) => deleteFile(file, whatIf))
+                    .then(() => Utils.mapSerialized(subDirectories, (subDir) => deleteDirectoryRecursive(subDir, whatIf)))
                     .then(() => {
                         // Delete current directory
                         if (!whatIf) {
@@ -177,28 +172,6 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
             },
 
             () => {
-                // If the file doesn't exist in the source, only delete if:
-                // 1. We have no previous directory
-                // 2. We have a previous directory and the file exists there
-                return Utils.mapSerialized(
-                    to.filesList(),
-                    (toFile: FileInfo) => {
-                        if (shouldIgnore(toFile.path(), toRootPath, ignoreList)) {
-                            // Ignore files in ignore list
-                            return Q.resolve();
-                        }
-
-                        if (!from.getFile(toFile.name())) {
-                            if (manifest.isPathInManifest(toFile.path(), toRootPath)) {
-                                return deleteFile(toFile, whatIf);
-                            }
-                        }
-                        return Q.resolve();
-                    }
-                );
-            },
-
-            () => {
                 // Copy files
                 return Utils.mapSerialized(
                     from.filesList(),
@@ -224,6 +197,28 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
             },
 
             () => {
+                // If the file doesn't exist in the source, only delete if:
+                // 1. We have no previous directory
+                // 2. We have a previous directory and the file exists there
+                return Utils.mapSerialized(
+                    to.filesList(),
+                    (toFile: FileInfo) => {
+                        if (shouldIgnore(toFile.path(), toRootPath, ignoreList)) {
+                            // Ignore files in ignore list
+                            return Q.resolve();
+                        }
+
+                        if (!from.getFile(toFile.name())) {
+                            if (manifest.isPathInManifest(toFile.path(), toRootPath)) {
+                                return deleteFile(toFile, whatIf);
+                            }
+                        }
+                        return Q.resolve();
+                    }
+                );
+            },
+
+            () => {
                 return Utils.mapSerialized(
                     to.subDirectoriesList(),
                     (toSubDirectory: DirectoryInfo) => {
@@ -242,8 +237,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
 
             () => {
                 // Copy directories
-                return Utils.mapParallelized(
-                    defaultParallelActions,
+                return Q.all(Utils.map(
                     from.subDirectoriesList(),
                     (fromSubDirectory: DirectoryInfo) => {
                         var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()));
@@ -257,7 +251,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                             ignoreList,
                             whatIf);
                     }
-                );
+                ));
             });
     }
     catch (err) {

@@ -3,6 +3,7 @@
 class FileInfoBase {
     private _name: string;
     private _path: string;
+    private _exists: bool;
 
     constructor (path: string) {
         Ensure.argNotNull(path, "path");
@@ -20,6 +21,13 @@ class FileInfoBase {
     }
 
     exists(): bool {
-        return fs.existsSync(this.path());
+        if (!this._exists) {
+            this._exists = fs.existsSync(this.path());
+        }
+        return this._exists;
+    }
+
+    setExists(val: bool) {
+        this._exists = val;
     }
 }

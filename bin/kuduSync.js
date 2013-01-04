@@ -124,7 +124,13 @@ var FileInfoBase = (function () {
         return this._path;
     };
     FileInfoBase.prototype.exists = function () {
-        return fs.existsSync(this.path());
+        if(!this._exists) {
+            this._exists = fs.existsSync(this.path());
+        }
+        return this._exists;
+    };
+    FileInfoBase.prototype.setExists = function (val) {
+        this._exists = val;
     };
     return FileInfoBase;
 })();
@@ -162,15 +168,22 @@ var DirectoryInfo = (function (_super) {
         this._subDirectoriesMapping = [];
         this._filesList = [];
         this._subDirectoriesList = [];
+        this._initialized = false;
     }
     DirectoryInfo.prototype.ensureCreated = function () {
         var _this = this;
         if(!this.exists()) {
-            return this.parent().ensureCreated().then(function () {
+            var promise = this.parent().ensureCreated();
+            promise = promise.then(function () {
                 return Utils.attempt(function () {
                     return Q.nfcall(fs.mkdir, _this.path());
                 });
             });
+            promise = promise.then(function () {
+                _this.setExists(true);
+                _this._initialized = true;
+            });
+            return promise;
         }
         return Q.resolve();
     };
@@ -183,7 +196,7 @@ var DirectoryInfo = (function (_super) {
         var filesList = new Array();
         var subDirectoriesMapping = new Array();
         var subDirectoriesList = new Array();
-        if(this.exists()) {
+        if(!this._initialized && this.exists()) {
             return Utils.attempt(function () {
                 try  {
                     var files = fs.readdirSync(_this.path());
@@ -204,6 +217,7 @@ var DirectoryInfo = (function (_super) {
                     _this._subDirectoriesMapping = subDirectoriesMapping;
                     _this._filesList = filesList;
                     _this._subDirectoriesList = subDirectoriesList;
+                    _this._initialized = true;
                     return Q.resolve();
                 } catch (err) {
                     return Q.reject(err);
@@ -283,7 +297,6 @@ var Manifest = (function () {
     };
     return Manifest;
 })();
-var defaultParallelActions = 5;
 function kuduSync(fromPath, toPath, nextManifestPath, previousManifestPath, ignore, whatIf) {
     Ensure.argNotNull(fromPath, "fromPath");
     Ensure.argNotNull(toPath, "toPath");
@@ -333,10 +346,7 @@ function copyFile(fromFile, toFilePath, whatIf) {
         return Utils.attempt(function () {
             var promise = copyFileInternal(fromFile, toFilePath);
             promise = promise.then(function () {
-                return Q.nfcall(fs.stat, toFilePath);
-            });
-            promise = promise.then(function (toFileStat) {
-                return Q.nfcall(fs.utimes, toFilePath, toFileStat.atime, fromFile.modifiedTime());
+                return Q.nfcall(fs.utimes, toFilePath, new Date(), fromFile.modifiedTime());
             }, null);
             return promise;
         });
@@ -349,9 +359,9 @@ function copyFileInternal(fromFile, toFilePath) {
         var readStream = fs.createReadStream(fromFile.path());
         var writeStream = fs.createWriteStream(toFilePath);
         readStream.pipe(writeStream);
-        readStream.on("end", deffered.resolve);
         readStream.on("error", deffered.reject);
         writeStream.on("error", deffered.reject);
+        writeStream.on("close", deffered.resolve);
     } catch (err) {
         deffered.reject(err);
     }
@@ -375,10 +385,10 @@ function deleteDirectoryRecursive(directory, whatIf) {
     return directory.initializeFilesAndSubDirectoriesLists().then(function () {
         var files = directory.filesList();
         var subDirectories = directory.subDirectoriesList();
-        return Utils.mapParallelized(defaultParallelActions, files, function (file) {
+        return Utils.mapSerialized(files, function (file) {
             return deleteFile(file, whatIf);
         }).then(function () {
-            return Utils.mapParallelized(defaultParallelActions, subDirectories, function (subDir) {
+            return Utils.mapSerialized(subDirectories, function (subDir) {
                 return deleteDirectoryRecursive(subDir, whatIf);
             });
         }).then(function () {
@@ -421,18 +431,6 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
         }, function () {
             return from.initializeFilesAndSubDirectoriesLists();
         }, function () {
-            return Utils.mapSerialized(to.filesList(), function (toFile) {
-                if(shouldIgnore(toFile.path(), toRootPath, ignoreList)) {
-                    return Q.resolve();
-                }
-                if(!from.getFile(toFile.name())) {
-                    if(manifest.isPathInManifest(toFile.path(), toRootPath)) {
-                        return deleteFile(toFile, whatIf);
-                    }
-                }
-                return Q.resolve();
-            });
-        }, function () {
             return Utils.mapSerialized(from.filesList(), function (fromFile) {
                 if(shouldIgnore(fromFile.path(), fromRootPath, ignoreList)) {
                     return Q.resolve();
@@ -441,6 +439,18 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
                 var toFile = to.getFile(fromFile.name());
                 if(toFile == null || !fromFile.equals(toFile)) {
                     return copyFile(fromFile, pathUtil.join(to.path(), fromFile.name()), whatIf);
+                }
+                return Q.resolve();
+            });
+        }, function () {
+            return Utils.mapSerialized(to.filesList(), function (toFile) {
+                if(shouldIgnore(toFile.path(), toRootPath, ignoreList)) {
+                    return Q.resolve();
+                }
+                if(!from.getFile(toFile.name())) {
+                    if(manifest.isPathInManifest(toFile.path(), toRootPath)) {
+                        return deleteFile(toFile, whatIf);
+                    }
                 }
                 return Q.resolve();
             });
@@ -454,10 +464,10 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
                 return Q.resolve();
             });
         }, function () {
-            return Utils.mapParallelized(defaultParallelActions, from.subDirectoriesList(), function (fromSubDirectory) {
+            return Q.all(Utils.map(from.subDirectoriesList(), function (fromSubDirectory) {
                 var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()));
                 return kuduSyncDirectory(fromSubDirectory, toSubDirectory, fromRootPath, toRootPath, manifest, outManifest, ignoreList, whatIf);
-            });
+            }));
         });
     } catch (err) {
         return Q.reject(err);
