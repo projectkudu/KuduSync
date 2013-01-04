@@ -59,5 +59,47 @@ module Utils {
 
         return result;
     }
+
+    export function mapParallelized(maxParallel: number, source: any[], action: (element: any, index: number) => Promise) : Promise {
+        var parallelOperations = [];
+        var result = Q.resolve();
+
+        for (var i = 0; i < source.length; i++) {
+            var singleOperation: any = {
+                source: source[i],
+                index: i,
+                action: function () {
+                    return action(this.source, this.index);
+                }
+            };
+
+            parallelOperations.push(singleOperation);
+
+            // Create a complex operation to run once reached maxParallel number of operations
+            // Or this is the last operation
+            if ((i % maxParallel) == (maxParallel - 1) || i == (source.length - 1)) {
+                var complexOperation: any = {
+                    parallelOperations: parallelOperations,
+                    action: function () {
+                        var self = this;
+                        return function () {
+                            var promises = [];
+
+                            for (var j = 0; j < self.parallelOperations.length; j++) {
+                                promises.push(self.parallelOperations[j].action());
+                            }
+
+                            return Q.all(promises);
+                        }
+                    }
+                };
+
+                result = result.then(complexOperation.action());
+                parallelOperations = [];
+            }
+        }
+
+        return result;
+    }
 }
 exports.Utils = Utils;

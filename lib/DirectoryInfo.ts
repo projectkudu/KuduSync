@@ -5,6 +5,7 @@ class DirectoryInfo extends FileInfoBase {
     private _subDirectoriesMapping: DirectoryInfo[];
     private _filesList: FileInfo[];
     private _subDirectoriesList: DirectoryInfo[];
+    private _initialized: bool;
 
     constructor (path: string) {
         super(path);
@@ -13,14 +14,25 @@ class DirectoryInfo extends FileInfoBase {
         this._subDirectoriesMapping = [];
         this._filesList = [];
         this._subDirectoriesList = [];
+        this._initialized = false;
     }
 
     ensureCreated() : Promise {
         if (!this.exists()) {
-            return this.parent().ensureCreated().then(() => {
+            var promise = this.parent().ensureCreated();
+
+            promise = promise.then(() => {
                 return Utils.attempt(() => Q.nfcall(fs.mkdir, this.path()));
             });
+
+            promise = promise.then(() => {
+                this.setExists(true);
+                this._initialized = true;
+            });
+
+            return promise;
         }
+
         return Q.resolve();
     }
 
@@ -29,21 +41,17 @@ class DirectoryInfo extends FileInfoBase {
     }
 
     initializeFilesAndSubDirectoriesLists() : Promise {
-        var self = this;
-
         var filesMapping = new FileInfo[];
         var filesList = new FileInfo[];
         var subDirectoriesMapping = new DirectoryInfo[];
         var subDirectoriesList = new DirectoryInfo[];
 
-        if (this.exists()) {
+        if (!this._initialized && this.exists()) {
             return Utils.attempt(() => {
                 try {
-                    // TODO: Consider changing this call to async
                     var files = fs.readdirSync(this.path());
-                    files.forEach(
-                        function (fileName: string) {
-                            var path = pathUtil.join(self.path(), fileName);
+                    files.forEach((fileName: string) => {
+                            var path = pathUtil.join(this.path(), fileName);
                             var stat = fs.statSync(path);
 
                             if (stat.isDirectory()) {
@@ -65,6 +73,8 @@ class DirectoryInfo extends FileInfoBase {
                     this._subDirectoriesMapping = subDirectoriesMapping;
                     this._filesList = filesList;
                     this._subDirectoriesList = subDirectoriesList;
+
+                    this._initialized = true;
 
                     return Q.resolve();
                 }
