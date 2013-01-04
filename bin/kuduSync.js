@@ -475,7 +475,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
 }
 function main() {
     var commander = require("commander");
-    commander.version("0.0.1").usage("[options]").option("-f, --fromDir <dir path>", "Source directory to sync").option("-t, --toDir <dir path>", "Destination directory to sync").option("-n, --nextManifest <manifest file path>", "Next manifest file path").option("-p, --previousManifest [manifest file path]", "Previous manifest file path").option("-i, --ignore [patterns]", "List of files/directories to ignore and not sync, delimited by ;").option("-q, --quiet", "No logging").option("-w, --whatIf", "Only log without actual copy/remove of files").parse(process.argv);
+    commander.version("0.0.1").usage("[options]").option("-f, --fromDir <dir path>", "Source directory to sync").option("-t, --toDir <dir path>", "Destination directory to sync").option("-n, --nextManifest <manifest file path>", "Next manifest file path").option("-p, --previousManifest [manifest file path]", "Previous manifest file path").option("-i, --ignore [patterns]", "List of files/directories to ignore and not sync, delimited by ;").option("-q, --quiet", "No logging").option("-v, --verbose [maxLines]", "Verbose logging with maximum number of output lines").option("-w, --whatIf", "Only log without actual copy/remove of files").parse(process.argv);
     var commanderValues = commander;
     var fromDir = commanderValues.fromDir;
     var toDir = commanderValues.toDir;
@@ -483,16 +483,35 @@ function main() {
     var nextManifest = commanderValues.nextManifest;
     var ignore = commanderValues.ignore;
     var quiet = commanderValues.quiet;
+    var verbose = commanderValues.verbose;
     var whatIf = commanderValues.whatIf;
-    if(quiet) {
-        log = function () {
-        };
+    if(quiet && verbose) {
+        console.log("Error: Cannot use --quiet and --verbose arguments together");
+        process.exit(1);
+        return;
     }
     if(!fromDir || !toDir || !nextManifest) {
         console.log("Error: Missing required argument");
         commander.help();
         process.exit(1);
         return;
+    }
+    if(quiet) {
+        log = function () {
+        };
+    }
+    var counter = 0;
+    if(verbose && verbose > 0) {
+        log = function (msg) {
+            if(counter < verbose) {
+                console.log(msg);
+            } else {
+                if(counter == verbose) {
+                    console.log("Omitting next output lines...");
+                }
+            }
+            counter++;
+        };
     }
     kuduSync(fromDir, toDir, nextManifest, previousManifest, ignore, whatIf).then(function () {
         process.exit(0);
