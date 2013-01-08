@@ -4,7 +4,8 @@
 interface Promise {
     fin(callback: (e?: any) => void): Promise;
     fail(callback: (e?: any) => any): Promise;
-    then(fulfilled_opt: (v?: any) => any, rejected_opt?: (e?: any) => any): Promise;
+    then(fulfilled_opt: (v: any) => any, rejected_opt?: (e?: any) => any): Promise;
+    then(fulfilled_opt: () => any, rejected_opt?: (e?: any) => any): Promise;
 }
 
 interface Deferred {
@@ -21,7 +22,7 @@ interface QStatic {
     reject(value?: any): Promise;
     delay(action: Function, delay: Number): Promise;
     all(...promises: any[]): Promise;
-    nfcall(nodeFunction: Function, ...args: any[]);
+    nfcall(nodeFunction: Function, ...args: any[]): Promise;
     fcall(nodeFunction: Function, thisp?: any, ...args: any[]);
 }
 
