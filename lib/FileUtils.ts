@@ -9,6 +9,10 @@ function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, pr
     var from = new DirectoryInfo(fromPath);
     var to = new DirectoryInfo(toPath);
 
+    if (!from.exists()) {
+        return Q.reject(new Error("From directory doesn't exist"));
+    }
+
     var nextManifest = new Manifest();
 
     var ignoreList = parseIgnoreList(ignore);
@@ -136,10 +140,6 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
     Ensure.argNotNull(outManifest, "outManifest");
 
     try {
-        if (!from.exists()) {
-            return Q.reject(new Error("From directory doesn't exist"));
-        }
-
         if (shouldIgnore(from.path(), fromRootPath, ignoreList)) {
             // Ignore directories in ignore list
             return Q.resolve();
@@ -173,7 +173,8 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
 
             () => {
                 // Copy files
-                return Utils.mapSerialized(
+                return Utils.mapParallelized(
+                    5,
                     from.filesList(),
                     (fromFile: FileInfo) => {
                         if (shouldIgnore(fromFile.path(), fromRootPath, ignoreList)) {
@@ -237,7 +238,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
 
             () => {
                 // Copy directories
-                return Q.all(Utils.map(
+                return Utils.mapSerialized(
                     from.subDirectoriesList(),
                     (fromSubDirectory: DirectoryInfo) => {
                         var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()));
@@ -251,10 +252,10 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                             ignoreList,
                             whatIf);
                     }
-                ));
+                );
             });
     }
     catch (err) {
         return Q.reject(err);
-     }
+    }
 }

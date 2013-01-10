@@ -141,25 +141,56 @@ var __extends = this.__extends || function (d, b) {
 }
 var FileInfo = (function (_super) {
     __extends(FileInfo, _super);
-    function FileInfo(path, fileStat) {
+    function FileInfo(path, size, modifiedTime) {
         _super.call(this, path);
-        Ensure.argNotNull(fileStat, "fileStat");
-        this._fileStat = fileStat;
+        Ensure.argNotNull(size, "size");
+        Ensure.argNotNull(modifiedTime, "modifiedTime");
+        this._size = size;
+        this._modifiedTime = new Date(modifiedTime);
     }
     FileInfo.prototype.modifiedTime = function () {
-        return this._fileStat.mtime;
+        return this._modifiedTime;
     };
     FileInfo.prototype.size = function () {
-        return this._fileStat.size;
+        return this._size;
     };
     FileInfo.prototype.equals = function (otherFile) {
-        if(this._fileStat == null || otherFile._fileStat == null || this.modifiedTime() == null || otherFile.modifiedTime() == null) {
+        if(this.modifiedTime() == null || otherFile.modifiedTime() == null) {
             return false;
         }
         return this.modifiedTime().getTime() === otherFile.modifiedTime().getTime() && this.size() === otherFile.size();
     };
     return FileInfo;
 })(FileInfoBase);
+var listDir = null;
+try  {
+    listDir = require("../ext/fsx_win32").listDir;
+    console.log("Using fsx_win32");
+} catch (e) {
+}
+if(listDir == null) {
+    listDir = function (path) {
+        var files = fs.readdirSync(path);
+        return Utils.map(files, function (fileName) {
+            var filePath = pathUtil.join(path, fileName);
+            var stat = fs.statSync(filePath);
+            if(stat.isDirectory()) {
+                var result = {
+                    fileName: fileName,
+                    isDirectory: true
+                };
+                return result;
+            } else {
+                var result = {
+                    fileName: fileName,
+                    size: stat.size,
+                    modifiedTime: stat.mtime
+                };
+                return result;
+            }
+        });
+    };
+}
 var DirectoryInfo = (function (_super) {
     __extends(DirectoryInfo, _super);
     function DirectoryInfo(path) {
@@ -199,18 +230,20 @@ var DirectoryInfo = (function (_super) {
         if(!this._initialized && this.exists()) {
             return Utils.attempt(function () {
                 try  {
-                    var files = fs.readdirSync(_this.path());
-                    files.forEach(function (fileName) {
-                        var path = pathUtil.join(_this.path(), fileName);
-                        var stat = fs.statSync(path);
-                        if(stat.isDirectory()) {
-                            var directoryInfo = new DirectoryInfo(path);
-                            subDirectoriesMapping[fileName.toUpperCase()] = directoryInfo;
-                            subDirectoriesList.push(directoryInfo);
-                        } else {
-                            var fileInfo = new FileInfo(path, stat);
-                            filesMapping[fileName.toUpperCase()] = fileInfo;
-                            filesList.push(fileInfo);
+                    var files = listDir(_this.path());
+                    files.forEach(function (file) {
+                        var path = pathUtil.join(_this.path(), file.fileName);
+                        if(file.fileName !== "." && file.fileName !== "..") {
+                            if(file.isDirectory) {
+                                var directoryInfo = new DirectoryInfo(path);
+                                directoryInfo.setExists(true);
+                                subDirectoriesMapping[file.fileName.toUpperCase()] = directoryInfo;
+                                subDirectoriesList.push(directoryInfo);
+                            } else {
+                                var fileInfo = new FileInfo(path, file.size, file.modifiedTime);
+                                filesMapping[file.fileName.toUpperCase()] = fileInfo;
+                                filesList.push(fileInfo);
+                            }
                         }
                     });
                     _this._filesMapping = filesMapping;
@@ -303,6 +336,9 @@ function kuduSync(fromPath, toPath, nextManifestPath, previousManifestPath, igno
     Ensure.argNotNull(nextManifestPath, "nextManifestPath");
     var from = new DirectoryInfo(fromPath);
     var to = new DirectoryInfo(toPath);
+    if(!from.exists()) {
+        return Q.reject(new Error("From directory doesn't exist"));
+    }
     var nextManifest = new Manifest();
     var ignoreList = parseIgnoreList(ignore);
     log("Kudu sync from: " + from.path() + " to: " + to.path());
@@ -409,9 +445,6 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
     Ensure.argNotNull(manifest, "manifest");
     Ensure.argNotNull(outManifest, "outManifest");
     try  {
-        if(!from.exists()) {
-            return Q.reject(new Error("From directory doesn't exist"));
-        }
         if(shouldIgnore(from.path(), fromRootPath, ignoreList)) {
             return Q.resolve();
         }
@@ -431,7 +464,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
         }, function () {
             return from.initializeFilesAndSubDirectoriesLists();
         }, function () {
-            return Utils.mapSerialized(from.filesList(), function (fromFile) {
+            return Utils.mapParallelized(5, from.filesList(), function (fromFile) {
                 if(shouldIgnore(fromFile.path(), fromRootPath, ignoreList)) {
                     return Q.resolve();
                 }
@@ -464,10 +497,10 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
                 return Q.resolve();
             });
         }, function () {
-            return Q.all(Utils.map(from.subDirectoriesList(), function (fromSubDirectory) {
+            return Utils.mapSerialized(from.subDirectoriesList(), function (fromSubDirectory) {
                 var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()));
                 return kuduSyncDirectory(fromSubDirectory, toSubDirectory, fromRootPath, toRootPath, manifest, outManifest, ignoreList, whatIf);
-            }));
+            });
         });
     } catch (err) {
         return Q.reject(err);
@@ -475,7 +508,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
 }
 function main() {
     var commander = require("commander");
-    commander.version("0.0.1").usage("[options]").option("-f, --fromDir <dir path>", "Source directory to sync").option("-t, --toDir <dir path>", "Destination directory to sync").option("-n, --nextManifest <manifest file path>", "Next manifest file path").option("-p, --previousManifest [manifest file path]", "Previous manifest file path").option("-i, --ignore [patterns]", "List of files/directories to ignore and not sync, delimited by ;").option("-q, --quiet", "No logging").option("-v, --verbose [maxLines]", "Verbose logging with maximum number of output lines").option("-w, --whatIf", "Only log without actual copy/remove of files").parse(process.argv);
+    commander.version("0.0.1").usage("[options]").option("-f, --fromDir <dir path>", "Source directory to sync").option("-t, --toDir <dir path>", "Destination directory to sync").option("-n, --nextManifest <manifest file path>", "Next manifest file path").option("-p, --previousManifest [manifest file path]", "Previous manifest file path").option("-i, --ignore [patterns]", "List of files/directories to ignore and not sync, delimited by ;").option("-q, --quiet", "No logging").option("-v, --verbose [maxLines]", "Verbose logging with maximum number of output lines").option("-w, --whatIf", "Only log without actual copy/remove of files").option("--perf", "Print out the time it took to complete KuduSync operation").parse(process.argv);
     var commanderValues = commander;
     var fromDir = commanderValues.fromDir;
     var toDir = commanderValues.toDir;
@@ -485,6 +518,7 @@ function main() {
     var quiet = commanderValues.quiet;
     var verbose = commanderValues.verbose;
     var whatIf = commanderValues.whatIf;
+    var perf = commanderValues.perf;
     if(quiet && verbose) {
         console.log("Error: Cannot use --quiet and --verbose arguments together");
         process.exit(1);
@@ -513,7 +547,12 @@ function main() {
             counter++;
         };
     }
+    var start = new Date();
     kuduSync(fromDir, toDir, nextManifest, previousManifest, ignore, whatIf).then(function () {
+        if(perf) {
+            var stop = new Date();
+            console.log("Operation took " + ((stop.getTime() - start.getTime()) / 1000) + " seconds");
+        }
         process.exit(0);
     }, function (err) {
         if(err) {

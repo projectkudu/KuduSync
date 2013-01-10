@@ -1,5 +1,40 @@
 ///<reference path='fileInfo.ts'/>
 
+var listDir: (path: string) => any[] = null;
+
+try {
+    listDir = require("../ext/fsx_win32").listDir;
+    console.log("Using fsx_win32");
+}
+catch (e) {
+}
+
+if (listDir == null) {
+    listDir = function (path: string) {
+        var files = fs.readdirSync(path);
+        return Utils.map(files, (fileName) => {
+            var filePath = pathUtil.join(path, fileName);
+            var stat = fs.statSync(filePath);
+
+            if (stat.isDirectory()) {
+                var result: any = {
+                    fileName: fileName,
+                    isDirectory: true
+                };
+                return result;
+            }
+            else {
+                var result: any = {
+                    fileName: fileName,
+                    size: stat.size,
+                    modifiedTime: stat.mtime
+                };
+                return result;
+            }
+        });
+    }
+}
+
 class DirectoryInfo extends FileInfoBase {
     private _filesMapping: FileInfo[];
     private _subDirectoriesMapping: DirectoryInfo[];
@@ -40,7 +75,7 @@ class DirectoryInfo extends FileInfoBase {
         return new DirectoryInfo(pathUtil.dirname(this.path()));
     }
 
-    initializeFilesAndSubDirectoriesLists() : Promise {
+    initializeFilesAndSubDirectoriesLists(): Promise {
         var filesMapping = new FileInfo[];
         var filesList = new FileInfo[];
         var subDirectoriesMapping = new DirectoryInfo[];
@@ -49,25 +84,25 @@ class DirectoryInfo extends FileInfoBase {
         if (!this._initialized && this.exists()) {
             return Utils.attempt(() => {
                 try {
-                    var files = fs.readdirSync(this.path());
-                    files.forEach((fileName: string) => {
-                            var path = pathUtil.join(this.path(), fileName);
-                            var stat = fs.statSync(path);
+                    var files = listDir(this.path());
+                    files.forEach((file: any) => {
+                        var path = pathUtil.join(this.path(), file.fileName);
 
-                            if (stat.isDirectory()) {
+                        if (file.fileName !== "." && file.fileName !== "..") {
+                            if (file.isDirectory) {
                                 // Store both as mapping as an array
                                 var directoryInfo = new DirectoryInfo(path);
-                                subDirectoriesMapping[fileName.toUpperCase()] = directoryInfo;
+                                directoryInfo.setExists(true);
+                                subDirectoriesMapping[file.fileName.toUpperCase()] = directoryInfo;
                                 subDirectoriesList.push(directoryInfo);
-                            }
-                            else {
+                            } else {
                                 // Store both as mapping as an array
-                                var fileInfo = new FileInfo(path, stat);
-                                filesMapping[fileName.toUpperCase()] = fileInfo;
+                                var fileInfo = new FileInfo(path, file.size, file.modifiedTime);
+                                filesMapping[file.fileName.toUpperCase()] = fileInfo;
                                 filesList.push(fileInfo);
                             }
                         }
-                    );
+                    });
 
                     this._filesMapping = filesMapping;
                     this._subDirectoriesMapping = subDirectoriesMapping;

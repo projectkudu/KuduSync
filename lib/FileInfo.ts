@@ -1,26 +1,28 @@
 ///<reference path='fileInfoBase.ts'/>
 
 class FileInfo extends FileInfoBase {
-    private _fileStat: FileStat;
+    private _size;
+    private _modifiedTime: Date;
 
-    constructor (path: string, fileStat: FileStat) {
+    constructor (path: string, size: any, modifiedTime: any) {
         super(path);
+        Ensure.argNotNull(size, "size");
+        Ensure.argNotNull(modifiedTime, "modifiedTime");
 
-        Ensure.argNotNull(fileStat, "fileStat");
-
-        this._fileStat = fileStat;
+        this._size = size;
+        this._modifiedTime = new Date(modifiedTime);
     }
 
     modifiedTime() {
-        return this._fileStat.mtime;
+        return this._modifiedTime;
     }
 
     size() {
-        return this._fileStat.size;
+        return this._size;
     }
 
     equals(otherFile: FileInfo): bool {
-        if (this._fileStat == null || otherFile._fileStat == null || this.modifiedTime() == null || otherFile.modifiedTime() == null) {
+        if (this.modifiedTime() == null || otherFile.modifiedTime() == null) {
             return false;
         }
 

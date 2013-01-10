@@ -15,6 +15,7 @@ function main() {
         .option("-q, --quiet", "No logging")
         .option("-v, --verbose [maxLines]", "Verbose logging with maximum number of output lines")
         .option("-w, --whatIf", "Only log without actual copy/remove of files")
+        .option("--perf", "Print out the time it took to complete KuduSync operation")
         .parse(process.argv);
 
     var commanderValues: any = commander;
@@ -26,6 +27,7 @@ function main() {
     var quiet = commanderValues.quiet;
     var verbose = commanderValues.verbose;
     var whatIf = commanderValues.whatIf;
+    var perf = commanderValues.perf;
 
     if (quiet && verbose) {
         console.log("Error: Cannot use --quiet and --verbose arguments together");
@@ -64,6 +66,7 @@ function main() {
         };
     }
 
+    var start = new Date();
     kuduSync(
         fromDir,
         toDir,
@@ -72,6 +75,10 @@ function main() {
         ignore,
         whatIf).then(
             () => {
+                if (perf) {
+                    var stop = new Date();
+                    console.log("Operation took " + ((stop.getTime() - start.getTime()) / 1000) + " seconds");
+                }
                 process.exit(0);
             },
             function (err?) {
