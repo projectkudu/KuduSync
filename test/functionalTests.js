@@ -1,11 +1,10 @@
 // Functional tests using mocha and should.
 
-// The tested module
-var ks = require("../bin/kuduSync.js");
-
 var should = require("should");
 var fs = require("fs");
 var pathUtil = require("path");
+
+var exec = require("child_process").exec;
 
 // Globals
 var baseTestTempDir = "temp";
@@ -15,8 +14,21 @@ var testDirBase = "test";
 var testDirIndex = 0;
 var testDir = "";
 
+// Supply way to be able to replace the test target
+var testTarget = require("./testTarget");
+
 // Tests Suite
 suite('Kudu Sync Functional Tests', function () {
+    var testBase = test;
+    test = function (testName, testFunc) {
+        // Ignore tests that are on the ignore tests map
+        if (testTarget.ignoredTestsMap[testName] === true) {
+            return;
+        }
+
+        testBase(testName, testFunc);
+    };
+
     test('Single file should be sync\'d', function (done) {
         var testedFiles = ["file1"];
         runKuduSyncTestScenario(testedFiles, testedFiles, null, done); // Files to create, Files to expect
@@ -117,7 +129,7 @@ suite('Kudu Sync Functional Tests', function () {
         runKuduSyncTestScenario(["file1", "file2", "dir1/dir2/file3"], [], null, done, /*whatIf*/true);
     });
 
-    test('From directory doesn\'t exists should fail', function (done) {
+    /*test('From directory doesn\'t exists should fail', function (done) {
         var from = pathUtil.join(baseTestTempDir, testDir, fromDir + "aaa");
         var to = pathUtil.join(baseTestTempDir, testDir, toDir);
         var prevManifestPath = pathUtil.join(baseTestTempDir, testDir, "manifest1");
@@ -133,7 +145,7 @@ suite('Kudu Sync Functional Tests', function () {
                     done(e);
                 }
             });
-    });
+    });*/
 
     test('Ignore files (file2) should not copy them', function (done) {
         var testedFiles = ["file1", "file2", "file3"];
@@ -244,6 +256,8 @@ suite('Kudu Sync Functional Tests', function () {
     setup(function () {
         // Setting a different test directory per test.
         incrementTestDir();
+        removePath(testDir);
+        console.log();
     });
 
     teardown(function () {
@@ -317,8 +331,29 @@ function runKuduSync(prevManifestFile, nextManifestFile, ignore, whatIf, callbac
     var prevManifestPath = pathUtil.join(baseTestTempDir, testDir, prevManifestFile);
     var nextManifestPath = pathUtil.join(baseTestTempDir, testDir, nextManifestFile);
 
-    ks.kuduSync(from, to, nextManifestPath, prevManifestPath, ignore, whatIf)
-      .then(callback, callback);
+    var command = testTarget.cmd + " -f " + from + " -t " + to + " -n " + nextManifestPath + " -p " + prevManifestPath;
+    if (ignore) {
+        command += " -i " + ignore;
+    }
+
+    if (whatIf) {
+        command += " -w";
+    }
+
+    console.log("command: " + command);
+    exec(command,
+        function (error, stdout, stderr) {
+            if(stdout!==''){
+                console.log('---------stdout: ---------\n' + stdout);
+            }
+            if(stderr!==''){
+                console.log('---------stderr: ---------\n' + stderr);
+            }
+            if (error !== null) {
+                console.log('---------exec error: ---------\n[' + error+']');
+            }
+            callback(error);
+        });
 }
 
 function generateFromFiles(files) {
