@@ -6,8 +6,8 @@ function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, pr
     Ensure.argNotNull(toPath, "toPath");
     Ensure.argNotNull(nextManifestPath, "nextManifestPath");
 
-    var from = new DirectoryInfo(fromPath);
-    var to = new DirectoryInfo(toPath);
+    var from = new DirectoryInfo(fromPath, fromPath);
+    var to = new DirectoryInfo(toPath, toPath);
 
     if (!from.exists()) {
         return Q.reject(new Error("From directory doesn't exist"));
@@ -17,7 +17,7 @@ function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, pr
 
     var ignoreList = parseIgnoreList(ignore);
 
-    log("Kudu sync from: " + from.path() + " to: " + to.path());
+    log("Kudu sync from: '" + from.path() + "' to: '" + to.path() + "'");
 
     return Manifest.load(previousManifestPath)
                     .then((manifest) => kuduSyncDirectory(from, to, from.path(), to.path(), manifest, nextManifest, ignoreList, whatIf))
@@ -48,7 +48,7 @@ function shouldIgnore(path: string, rootPath: string, ignoreList: string[]): boo
     for (var i = 0; i < ignoreList.length; i++) {
         var ignore = ignoreList[i];
         if (minimatch(relativePath, ignore, { matchBase: true, nocase: true })) {
-            log("Ignoring: " + path);
+            log("Ignoring: " + relativePath);
             return true;
         }
     }
@@ -60,7 +60,7 @@ function copyFile(fromFile: FileInfo, toFilePath: string, whatIf: bool) : Promis
     Ensure.argNotNull(fromFile, "fromFile");
     Ensure.argNotNull(toFilePath, "toFilePath");
 
-    log("Copying file from: " + fromFile.path() + " to: " + toFilePath);
+    log("Copying file: '" + fromFile.relativePath() + "'");
 
     if (!whatIf) {
         return Utils.attempt(() => {
@@ -98,7 +98,7 @@ function deleteFile(file: FileInfo, whatIf: bool) : Promise {
 
     var path = file.path();
 
-    log("Deleting file: " + path);
+    log("Deleting file: '" + file.relativePath() + "'");
 
     if (!whatIf) {
         return Utils.attempt(() => Q.nfcall(fs.unlink, path));
@@ -111,7 +111,7 @@ function deleteDirectoryRecursive(directory: DirectoryInfo, whatIf: bool) {
     Ensure.argNotNull(directory, "directory");
 
     var path = directory.path();
-    log("Deleting directory: " + path);
+    log("Deleting directory: '" + directory.relativePath() + "'");
 
     return directory.initializeFilesAndSubDirectoriesLists()
         .then(() => {

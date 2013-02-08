@@ -112,9 +112,10 @@ var Utils;
 
 exports.Utils = Utils;
 var FileInfoBase = (function () {
-    function FileInfoBase(path) {
+    function FileInfoBase(path, rootPath) {
         Ensure.argNotNull(path, "path");
         this._path = path;
+        this._rootPath = rootPath;
         this._name = pathUtil.relative(pathUtil.dirname(path), path);
     }
     FileInfoBase.prototype.name = function () {
@@ -122,6 +123,12 @@ var FileInfoBase = (function () {
     };
     FileInfoBase.prototype.path = function () {
         return this._path;
+    };
+    FileInfoBase.prototype.rootPath = function () {
+        return this._rootPath;
+    };
+    FileInfoBase.prototype.relativePath = function () {
+        return pathUtil.relative(this._rootPath, this._path);
     };
     FileInfoBase.prototype.exists = function () {
         if(!this._exists) {
@@ -141,8 +148,8 @@ var __extends = this.__extends || function (d, b) {
 }
 var FileInfo = (function (_super) {
     __extends(FileInfo, _super);
-    function FileInfo(path, size, modifiedTime) {
-        _super.call(this, path);
+    function FileInfo(path, rootPath, size, modifiedTime) {
+        _super.call(this, path, rootPath);
         Ensure.argNotNull(size, "size");
         Ensure.argNotNull(modifiedTime, "modifiedTime");
         this._size = size;
@@ -193,8 +200,8 @@ if(listDir == null) {
 }
 var DirectoryInfo = (function (_super) {
     __extends(DirectoryInfo, _super);
-    function DirectoryInfo(path) {
-        _super.call(this, path);
+    function DirectoryInfo(path, rootPath) {
+        _super.call(this, path, rootPath);
         this._filesMapping = [];
         this._subDirectoriesMapping = [];
         this._filesList = [];
@@ -219,7 +226,7 @@ var DirectoryInfo = (function (_super) {
         return Q.resolve();
     };
     DirectoryInfo.prototype.parent = function () {
-        return new DirectoryInfo(pathUtil.dirname(this.path()));
+        return new DirectoryInfo(pathUtil.dirname(this.path()), this.rootPath());
     };
     DirectoryInfo.prototype.initializeFilesAndSubDirectoriesLists = function () {
         var _this = this;
@@ -235,12 +242,12 @@ var DirectoryInfo = (function (_super) {
                         var path = pathUtil.join(_this.path(), file.fileName);
                         if(file.fileName !== "." && file.fileName !== "..") {
                             if(file.isDirectory) {
-                                var directoryInfo = new DirectoryInfo(path);
+                                var directoryInfo = new DirectoryInfo(path, _this.rootPath());
                                 directoryInfo.setExists(true);
                                 subDirectoriesMapping[file.fileName.toUpperCase()] = directoryInfo;
                                 subDirectoriesList.push(directoryInfo);
                             } else {
-                                var fileInfo = new FileInfo(path, file.size, file.modifiedTime);
+                                var fileInfo = new FileInfo(path, _this.rootPath(), file.size, file.modifiedTime);
                                 filesMapping[file.fileName.toUpperCase()] = fileInfo;
                                 filesList.push(fileInfo);
                             }
@@ -334,14 +341,14 @@ function kuduSync(fromPath, toPath, nextManifestPath, previousManifestPath, igno
     Ensure.argNotNull(fromPath, "fromPath");
     Ensure.argNotNull(toPath, "toPath");
     Ensure.argNotNull(nextManifestPath, "nextManifestPath");
-    var from = new DirectoryInfo(fromPath);
-    var to = new DirectoryInfo(toPath);
+    var from = new DirectoryInfo(fromPath, fromPath);
+    var to = new DirectoryInfo(toPath, toPath);
     if(!from.exists()) {
         return Q.reject(new Error("From directory doesn't exist"));
     }
     var nextManifest = new Manifest();
     var ignoreList = parseIgnoreList(ignore);
-    log("Kudu sync from: " + from.path() + " to: " + to.path());
+    log("Kudu sync from: '" + from.path() + "' to: '" + to.path() + "'");
     return Manifest.load(previousManifestPath).then(function (manifest) {
         return kuduSyncDirectory(from, to, from.path(), to.path(), manifest, nextManifest, ignoreList, whatIf);
     }).then(function () {
@@ -368,7 +375,7 @@ function shouldIgnore(path, rootPath, ignoreList) {
             matchBase: true,
             nocase: true
         })) {
-            log("Ignoring: " + path);
+            log("Ignoring: " + relativePath);
             return true;
         }
     }
@@ -377,7 +384,7 @@ function shouldIgnore(path, rootPath, ignoreList) {
 function copyFile(fromFile, toFilePath, whatIf) {
     Ensure.argNotNull(fromFile, "fromFile");
     Ensure.argNotNull(toFilePath, "toFilePath");
-    log("Copying file from: " + fromFile.path() + " to: " + toFilePath);
+    log("Copying file: '" + fromFile.relativePath() + "'");
     if(!whatIf) {
         return Utils.attempt(function () {
             var promise = copyFileInternal(fromFile, toFilePath);
@@ -406,7 +413,7 @@ function copyFileInternal(fromFile, toFilePath) {
 function deleteFile(file, whatIf) {
     Ensure.argNotNull(file, "file");
     var path = file.path();
-    log("Deleting file: " + path);
+    log("Deleting file: '" + file.relativePath() + "'");
     if(!whatIf) {
         return Utils.attempt(function () {
             return Q.nfcall(fs.unlink, path);
@@ -417,7 +424,7 @@ function deleteFile(file, whatIf) {
 function deleteDirectoryRecursive(directory, whatIf) {
     Ensure.argNotNull(directory, "directory");
     var path = directory.path();
-    log("Deleting directory: " + path);
+    log("Deleting directory: '" + directory.relativePath() + "'");
     return directory.initializeFilesAndSubDirectoriesLists().then(function () {
         var files = directory.filesList();
         var subDirectories = directory.subDirectoriesList();

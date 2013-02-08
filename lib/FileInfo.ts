@@ -4,8 +4,8 @@ class FileInfo extends FileInfoBase {
     private _size;
     private _modifiedTime: Date;
 
-    constructor (path: string, size: any, modifiedTime: any) {
-        super(path);
+    constructor (path: string, rootPath: string, size: any, modifiedTime: any) {
+        super(path, rootPath);
         Ensure.argNotNull(size, "size");
         Ensure.argNotNull(modifiedTime, "modifiedTime");
 

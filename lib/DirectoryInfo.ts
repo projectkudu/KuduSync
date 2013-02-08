@@ -42,8 +42,8 @@ class DirectoryInfo extends FileInfoBase {
     private _subDirectoriesList: DirectoryInfo[];
     private _initialized: bool;
 
-    constructor (path: string) {
-        super(path);
+    constructor (path: string, rootPath: string) {
+        super(path, rootPath);
 
         this._filesMapping = [];
         this._subDirectoriesMapping = [];
@@ -72,7 +72,7 @@ class DirectoryInfo extends FileInfoBase {
     }
 
     parent(): DirectoryInfo {
-        return new DirectoryInfo(pathUtil.dirname(this.path()));
+        return new DirectoryInfo(pathUtil.dirname(this.path()), this.rootPath());
     }
 
     initializeFilesAndSubDirectoriesLists(): Promise {
@@ -91,13 +91,13 @@ class DirectoryInfo extends FileInfoBase {
                         if (file.fileName !== "." && file.fileName !== "..") {
                             if (file.isDirectory) {
                                 // Store both as mapping as an array
-                                var directoryInfo = new DirectoryInfo(path);
+                                var directoryInfo = new DirectoryInfo(path, this.rootPath());
                                 directoryInfo.setExists(true);
                                 subDirectoriesMapping[file.fileName.toUpperCase()] = directoryInfo;
                                 subDirectoriesList.push(directoryInfo);
                             } else {
                                 // Store both as mapping as an array
-                                var fileInfo = new FileInfo(path, file.size, file.modifiedTime);
+                                var fileInfo = new FileInfo(path, this.rootPath(), file.size, file.modifiedTime);
                                 filesMapping[file.fileName.toUpperCase()] = fileInfo;
                                 filesList.push(fileInfo);
                             }

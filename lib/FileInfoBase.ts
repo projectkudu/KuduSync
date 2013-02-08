@@ -3,12 +3,14 @@
 class FileInfoBase {
     private _name: string;
     private _path: string;
+    private _rootPath: string;
     private _exists: bool;
 
-    constructor (path: string) {
+    constructor (path: string, rootPath: string) {
         Ensure.argNotNull(path, "path");
 
         this._path = path;
+        this._rootPath = rootPath;
         this._name = pathUtil.relative(pathUtil.dirname(path), path);
     }
 
@@ -18,6 +20,14 @@ class FileInfoBase {
 
     path(): string {
         return this._path;
+    }
+
+    rootPath(): string {
+        return this._rootPath;
+    }
+
+    relativePath(): string {
+        return pathUtil.relative(this._rootPath, this._path);
     }
 
     exists(): bool {
