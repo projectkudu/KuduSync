@@ -129,24 +129,6 @@ suite('Kudu Sync Functional Tests', function () {
         runKuduSyncTestScenario(["file1", "file2", "dir1/dir2/file3"], [], null, done, /*whatIf*/true);
     });
 
-    /*test('From directory doesn\'t exists should fail', function (done) {
-        var from = pathUtil.join(baseTestTempDir, testDir, fromDir + "aaa");
-        var to = pathUtil.join(baseTestTempDir, testDir, toDir);
-        var prevManifestPath = pathUtil.join(baseTestTempDir, testDir, "manifest1");
-        var nextManifestPath = prevManifestPath;
-
-        ks.kuduSync(from, to, nextManifestPath, prevManifestPath, null, true)
-            .fail(function (err) {
-                try {
-                    should.exist(err);
-                    done();
-                }
-                catch (e) {
-                    done(e);
-                }
-            });
-    });*/
-
     test('Ignore files (file2) should not copy them', function (done) {
         var testedFiles = ["file1", "file2", "file3"];
         var ignore = "file2";
@@ -251,6 +233,30 @@ suite('Kudu Sync Functional Tests', function () {
         var testedFiles = ["file4", "file5", "file6"];
         var expectedFiles = ["file4", "file5", "file6", "dir1/dir2/tofile3"];
         runKuduSyncTestScenario(testedFiles, expectedFiles, null, done);
+    });
+
+    test('From directory doesn\'t exist should fail with an error', function (done) {
+      var from = pathUtil.join(baseTestTempDir, testDir, 'doesntexist');
+      var to = pathUtil.join(baseTestTempDir, testDir, 'to');
+      var prevManifestPath = pathUtil.join(baseTestTempDir, testDir, 'manifest');
+      var nextManifestPath = pathUtil.join(baseTestTempDir, testDir, 'manifest');
+
+      var command = testTarget.cmd + " -f " + from + " -t " + to + " -n " + nextManifestPath + " -p " + prevManifestPath;
+
+      exec(command,
+          function (error, stdout, stderr) {
+            if (stdout !== '') {
+              console.log('---------stdout: ---------\n' + stdout);
+            }
+            if (stderr !== '') {
+              console.log('---------stderr: ---------\n' + stderr);
+            }
+            if (error !== null) {
+              console.log('---------exec error: ---------\n[' + error + ']');
+            }
+            should.exist(error);
+            done();
+          });
     });
 
     setup(function () {
