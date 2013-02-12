@@ -1,4 +1,6 @@
-var cmd = "node " + __dirname + "\\..\\bin\\kudusync";
+var pathUtil = require("path");
+
+var cmd = "node " + pathUtil.join(__dirname, "..", "bin", "kudusync");
 var ignoredTestsMap = {};
 
 exports.cmd = cmd;
