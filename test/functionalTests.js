@@ -339,7 +339,7 @@ function runKuduSync(prevManifestFile, nextManifestFile, ignore, whatIf, callbac
 
     var command = testTarget.cmd + " -f " + from + " -t " + to + " -n " + nextManifestPath + " -p " + prevManifestPath;
     if (ignore) {
-        command += " -i '" + ignore + "'";
+        command += " -i \"" + ignore + "\"";
     }
 
     if (whatIf) {

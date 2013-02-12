@@ -542,14 +542,26 @@ function main() {
         };
     }
     var counter = 0;
+    var nextLogTime = null;
     if(verbose && verbose > 0) {
         log = function (msg) {
+            var updateLogTime = false;
             if(counter < verbose) {
                 console.log(msg);
             } else {
                 if(counter == verbose) {
                     console.log("Omitting next output lines...");
+                    updateLogTime = true;
+                } else {
+                    if(new Date().getTime() >= nextLogTime.getTime()) {
+                        console.log("Processed " + (counter - 1) + " files...");
+                        updateLogTime = true;
+                    }
                 }
+            }
+            if(updateLogTime) {
+                var currentDate = new Date();
+                nextLogTime = new Date(currentDate.getTime() + 20000);
             }
             counter++;
         };
