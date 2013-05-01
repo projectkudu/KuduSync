@@ -229,12 +229,18 @@ var DirectoryInfo = (function (_super) {
         return new DirectoryInfo(pathUtil.dirname(this.path()), this.rootPath());
     };
     DirectoryInfo.prototype.initializeFilesAndSubDirectoriesLists = function () {
+        if(!this._initialized && this.exists()) {
+            return this.updateFilesAndSubDirectoriesLists();
+        }
+        return Q.resolve();
+    };
+    DirectoryInfo.prototype.updateFilesAndSubDirectoriesLists = function () {
         var _this = this;
         var filesMapping = new Array();
         var filesList = new Array();
         var subDirectoriesMapping = new Array();
         var subDirectoriesList = new Array();
-        if(!this._initialized && this.exists()) {
+        if(this.exists()) {
             return Utils.attempt(function () {
                 try  {
                     var files = listDir(_this.path());
@@ -410,38 +416,50 @@ function copyFileInternal(fromFile, toFilePath) {
     }
     return deffered.promise;
 }
-function deleteFile(file, whatIf) {
+function deleteFileIfInManifest(file, manifest, rootPath, whatIf) {
     Ensure.argNotNull(file, "file");
     var path = file.path();
-    log("Deleting file: '" + file.relativePath() + "'");
-    if(!whatIf) {
-        return Utils.attempt(function () {
-            return Q.nfcall(fs.unlink, path);
-        });
+    if(manifest.isPathInManifest(file.path(), rootPath)) {
+        log("Deleting file: '" + file.relativePath() + "'");
+        if(!whatIf) {
+            return Utils.attempt(function () {
+                return Q.nfcall(fs.unlink, path);
+            });
+        }
     }
     return Q.resolve();
 }
-function deleteDirectoryRecursive(directory, whatIf) {
+function deleteDirectoryRecursive(directory, manifest, rootPath, whatIf) {
     Ensure.argNotNull(directory, "directory");
     var path = directory.path();
-    log("Deleting directory: '" + directory.relativePath() + "'");
-    return directory.initializeFilesAndSubDirectoriesLists().then(function () {
-        var files = directory.filesList();
-        var subDirectories = directory.subDirectoriesList();
-        return Utils.mapSerialized(files, function (file) {
-            return deleteFile(file, whatIf);
-        }).then(function () {
-            return Utils.mapSerialized(subDirectories, function (subDir) {
-                return deleteDirectoryRecursive(subDir, whatIf);
-            });
-        }).then(function () {
-            if(!whatIf) {
-                return Utils.attempt(function () {
-                    return Q.nfcall(fs.rmdir, path);
-                });
-            }
-            return Q.resolve();
+    var relativePath = directory.relativePath();
+    if(!manifest.isPathInManifest(path, rootPath)) {
+        return Q.resolve();
+    }
+    return Utils.serialize(function () {
+        return directory.initializeFilesAndSubDirectoriesLists();
+    }, function () {
+        return Utils.mapSerialized(directory.filesList(), function (file) {
+            return deleteFileIfInManifest(file, manifest, rootPath, whatIf);
         });
+    }, function () {
+        return Utils.mapSerialized(directory.subDirectoriesList(), function (subDir) {
+            return deleteDirectoryRecursive(subDir, manifest, rootPath, whatIf);
+        });
+    }, function () {
+        return directory.updateFilesAndSubDirectoriesLists();
+    }, function () {
+        var filesCount = directory.filesList().length + directory.subDirectoriesList().length;
+        if(filesCount > 0) {
+            return Q.resolve();
+        }
+        log("Deleting directory: '" + relativePath + "'");
+        if(!whatIf) {
+            return Utils.attempt(function () {
+                return Q.nfcall(fs.rmdir, path);
+            });
+        }
+        return Q.resolve();
     });
 }
 function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outManifest, ignoreList, whatIf) {
@@ -488,9 +506,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
                     return Q.resolve();
                 }
                 if(!from.getFile(toFile.name())) {
-                    if(manifest.isPathInManifest(toFile.path(), toRootPath)) {
-                        return deleteFile(toFile, whatIf);
-                    }
+                    return deleteFileIfInManifest(toFile, manifest, toRootPath, whatIf);
                 }
                 return Q.resolve();
             });
@@ -498,7 +514,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
             return Utils.mapSerialized(to.subDirectoriesList(), function (toSubDirectory) {
                 if(!from.getSubDirectory(toSubDirectory.name())) {
                     if(manifest.isPathInManifest(toSubDirectory.path(), toRootPath)) {
-                        return deleteDirectoryRecursive(toSubDirectory, whatIf);
+                        return deleteDirectoryRecursive(toSubDirectory, manifest, toRootPath, whatIf);
                     }
                 }
                 return Q.resolve();

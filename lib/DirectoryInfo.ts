@@ -76,12 +76,20 @@ class DirectoryInfo extends FileInfoBase {
     }
 
     initializeFilesAndSubDirectoriesLists(): Promise {
+        if (!this._initialized && this.exists()) {
+            return this.updateFilesAndSubDirectoriesLists();
+        }
+
+        return Q.resolve();
+    }
+
+    updateFilesAndSubDirectoriesLists(): Promise {
         var filesMapping = new FileInfo[];
         var filesList = new FileInfo[];
         var subDirectoriesMapping = new DirectoryInfo[];
         var subDirectoriesList = new DirectoryInfo[];
 
-        if (!this._initialized && this.exists()) {
+        if (this.exists()) {
             return Utils.attempt(() => {
                 try {
                     var files = listDir(this.path());

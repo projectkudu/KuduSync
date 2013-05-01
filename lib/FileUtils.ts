@@ -93,41 +93,63 @@ function copyFileInternal(fromFile: FileInfo, toFilePath: string): Promise {
     return deffered.promise;
 }
 
-function deleteFile(file: FileInfo, whatIf: bool) : Promise {
+function deleteFileIfInManifest(file: FileInfo, manifest: Manifest, rootPath: string, whatIf: bool) : Promise {
     Ensure.argNotNull(file, "file");
 
     var path = file.path();
 
-    log("Deleting file: '" + file.relativePath() + "'");
+    // Remove file only if it was in previous manifest
+    if (manifest.isPathInManifest(file.path(), rootPath)) {
+        log("Deleting file: '" + file.relativePath() + "'");
 
-    if (!whatIf) {
-        return Utils.attempt(() => Q.nfcall(fs.unlink, path));
+        if (!whatIf) {
+            return Utils.attempt(() => Q.nfcall(fs.unlink, path));
+        }
     }
     
     return Q.resolve();
 }
 
-function deleteDirectoryRecursive(directory: DirectoryInfo, whatIf: bool) {
+function deleteDirectoryRecursive(directory: DirectoryInfo, manifest: Manifest, rootPath: string, whatIf: bool) {
     Ensure.argNotNull(directory, "directory");
 
     var path = directory.path();
-    log("Deleting directory: '" + directory.relativePath() + "'");
+    var relativePath = directory.relativePath();
 
-    return directory.initializeFilesAndSubDirectoriesLists()
-        .then(() => {
-            var files = directory.filesList();
-            var subDirectories = directory.subDirectoriesList();
+    // Remove directory only if it was in previous manifest
+    if (!manifest.isPathInManifest(path, rootPath)) {
+        return Q.resolve();
+    }
 
-            // Delete all files under this directory
-            return Utils.mapSerialized(files, (file) => deleteFile(file, whatIf))
-                    .then(() => Utils.mapSerialized(subDirectories, (subDir) => deleteDirectoryRecursive(subDir, whatIf)))
-                    .then(() => {
-                        // Delete current directory
-                        if (!whatIf) {
-                            return Utils.attempt(() => Q.nfcall(fs.rmdir, path));
-                        }
-                        return Q.resolve();
-                    });
+    return Utils.serialize(
+        () => {
+            return directory.initializeFilesAndSubDirectoriesLists();
+        },
+
+        () => {
+            return Utils.mapSerialized(directory.filesList(), (file: FileInfo) => deleteFileIfInManifest(file, manifest, rootPath, whatIf));
+        },
+
+        () => {
+            return Utils.mapSerialized(directory.subDirectoriesList(), (subDir) => deleteDirectoryRecursive(subDir, manifest, rootPath, whatIf));
+        },
+
+        () => {
+            return directory.updateFilesAndSubDirectoriesLists();
+        },
+
+        () => {
+            var filesCount = directory.filesList().length + directory.subDirectoriesList().length;
+            if (filesCount > 0) {
+                return Q.resolve();
+            }
+
+            // Delete current directory
+            log("Deleting directory: '" + relativePath + "'");
+            if (!whatIf) {
+                return Utils.attempt(() => Q.nfcall(fs.rmdir, path));
+            }
+            return Q.resolve();
         });
 }
 
@@ -210,9 +232,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                         }
 
                         if (!from.getFile(toFile.name())) {
-                            if (manifest.isPathInManifest(toFile.path(), toRootPath)) {
-                                return deleteFile(toFile, whatIf);
-                            }
+                            return deleteFileIfInManifest(toFile, manifest, toRootPath, whatIf);
                         }
                         return Q.resolve();
                     }
@@ -228,7 +248,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                         // 2. We have a previous directory and the file exists there
                         if (!from.getSubDirectory(toSubDirectory.name())) {
                             if (manifest.isPathInManifest(toSubDirectory.path(), toRootPath)) {
-                                return deleteDirectoryRecursive(toSubDirectory, whatIf);
+                                return deleteDirectoryRecursive(toSubDirectory, manifest, toRootPath, whatIf);
                             }
                         }
                         return Q.resolve();

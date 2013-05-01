@@ -51,14 +51,12 @@ suite('Kudu Sync Functional Tests', function () {
 
     test('Single file updated should be sync\'d', function (done) {
         runKuduSyncTestScenario(["file1.bin"], ["file1.bin"], null, function () {
-
             runKuduSyncTestScenario(["file1.bin"], ["file1.bin"], null, done);
         });
     });
 
     test('Several files updated should be sync\'d', function (done) {
         runKuduSyncTestScenario(["file1.bin", "file2", "dir1/file3", "dir1/dir2/dir3/file4"], ["file1.bin", "file2", "dir1/file3", "dir1/dir2/dir3/file4"], null, function () {
-
             runKuduSyncTestScenario(["file2", "dir1/file3", "dir1/dir2/dir3/file5", "dir2/file6.txt"], ["file1.bin", "file2", "dir1/file3", "dir1/dir2/dir3/file4", "dir1/dir2/dir3/file5", "dir2/file6.txt"], null, done);
         });
     });
@@ -71,14 +69,12 @@ suite('Kudu Sync Functional Tests', function () {
 
     test('Several files some created some removed should be sync\'d', function (done) {
         runKuduSyncTestScenario(["file1.bin", "file2", "dir1/file3", "dir1/dir2/dir3/file4"], ["file1.bin", "file2", "dir1/file3", "dir1/dir2/dir3/file4"], null, function () {
-
             runKuduSyncTestScenario(["file2", "-dir1/file3", "-dir1/dir2/dir3/file4"], ["file1.bin", "file2", "-dir1/file3", "-dir1/dir2/dir3/file4"], null, done);
         });
     });
 
     test('Single file created then file created only in destination, new file should remain', function (done) {
         runKuduSyncTestScenario(["file1"], ["file1"], null, function () {
-
             // Generating a file only in the destination directory, this shouldn't be removed
             generateToFile("tofile");
 
@@ -86,9 +82,26 @@ suite('Kudu Sync Functional Tests', function () {
         });
     });
 
+    test('Directory should not be removed if not empty', function (done) {
+        runKuduSyncTestScenario(["file1", "dir1/file2"], ["file1", "dir1/file2"], null, function () {
+            // Generating a file only in the destination directory, this shouldn't be removed
+            generateToFile("dir1/file3");
+
+            runKuduSyncTestScenario(["-dir1/file2", "-dir1"], ["file1", "-dir1/file2", "dir1/file3"], null, done);
+        });
+    });
+
+    test('Deep directory should not be removed if not empty', function (done) {
+        runKuduSyncTestScenario(["file1", "dir1/file2", "dir1/dir2/file3", "dir1/dir3/file4", "dir1/dir2/dir4/file5"], ["file1", "dir1/file2", "dir1/dir2/file3", "dir1/dir3/file4", "dir1/dir2/dir4/file5"], null, function () {
+            // Generating a file only in the destination directory, this shouldn't be removed
+            generateToFile("dir1/dir2/file6");
+
+            runKuduSyncTestScenario(["-dir1"], ["file1", "-dir1/file2", "-dir1/dir2/file3", "-dir1/dir3/file4", "-dir1/dir2/dir4/file5", "dir1/dir2/file6", "-dir1/dir3", "-dir1/dir2/dir4"], null, done);
+        });
+    });
+
     test('Several files created then file created only in destination, new file should remain', function (done) {
         runKuduSyncTestScenario(["file1", "dir1/file2"], ["file1", "dir1/file2"], null, function () {
-
             // Generating files only in the destination directory, those files shouldn't be removed
             generateToFile("dir1/dir2/tofile1");
             generateToFile("dir1/dir2/tofile2");
@@ -103,7 +116,6 @@ suite('Kudu Sync Functional Tests', function () {
             generateToFile("tofile2");
 
             runKuduSyncTestScenario(["-file1"], ["-file1", "tofile2"], null, function () {
-
                 runKuduSyncTestScenario(["file1"], ["file1", "tofile2"], null, done);
             });
         });
@@ -236,27 +248,27 @@ suite('Kudu Sync Functional Tests', function () {
     });
 
     test('From directory doesn\'t exist should fail with an error', function (done) {
-      var from = pathUtil.join(baseTestTempDir, testDir, 'doesntexist');
-      var to = pathUtil.join(baseTestTempDir, testDir, 'to');
-      var prevManifestPath = pathUtil.join(baseTestTempDir, testDir, 'manifest');
-      var nextManifestPath = pathUtil.join(baseTestTempDir, testDir, 'manifest');
+        var from = pathUtil.join(baseTestTempDir, testDir, 'doesntexist');
+        var to = pathUtil.join(baseTestTempDir, testDir, 'to');
+        var prevManifestPath = pathUtil.join(baseTestTempDir, testDir, 'manifest');
+        var nextManifestPath = pathUtil.join(baseTestTempDir, testDir, 'manifest');
 
-      var command = testTarget.cmd + " -f " + from + " -t " + to + " -n " + nextManifestPath + " -p " + prevManifestPath;
+        var command = testTarget.cmd + " -f " + from + " -t " + to + " -n " + nextManifestPath + " -p " + prevManifestPath;
 
-      exec(command,
-          function (error, stdout, stderr) {
-            if (stdout !== '') {
-              console.log('---------stdout: ---------\n' + stdout);
-            }
-            if (stderr !== '') {
-              console.log('---------stderr: ---------\n' + stderr);
-            }
-            if (error !== null) {
-              console.log('---------exec error: ---------\n[' + error + ']');
-            }
-            should.exist(error);
-            done();
-          });
+        exec(command,
+            function (error, stdout, stderr) {
+                if (stdout !== '') {
+                    console.log('---------stdout: ---------\n' + stdout);
+                }
+                if (stderr !== '') {
+                    console.log('---------stderr: ---------\n' + stderr);
+                }
+                if (error !== null) {
+                    console.log('---------exec error: ---------\n[' + error + ']');
+                }
+                should.exist(error);
+                done();
+            });
     });
 
     setup(function () {
@@ -349,10 +361,10 @@ function runKuduSync(prevManifestFile, nextManifestFile, ignore, whatIf, callbac
     console.log("command: " + command);
     exec(command,
         function (error, stdout, stderr) {
-            if(stdout!==''){
+            if (stdout !== '') {
                 console.log('---------stdout: ---------\n' + stdout);
             }
-            if(stderr!==''){
+            if (stderr !== '') {
                 console.log('---------stderr: ---------\n' + stderr);
             }
             if (error !== null) {
@@ -487,14 +499,13 @@ function ensurePathExists(path) {
 }
 
 // Create a random string, more chance for /n and space.
-function randomString()
-{
+function randomString() {
     var length = Math.floor(Math.random() * 1024) + 100;
 
     var text = "";
     var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZ \n abcdefghijklmnopqrstuvwxyz \n 0123456789 \n \t";
 
-    for( var i=0; i < length; i++ )
+    for (var i = 0; i < length; i++)
         text += possible.charAt(Math.floor(Math.random() * possible.length));
 
     return text;
