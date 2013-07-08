@@ -149,4 +149,15 @@ class DirectoryInfo extends FileInfoBase {
     subDirectoriesList() {
         return this._subDirectoriesList;
     }
+
+    isSubdirectoryOf(potentialParentDirectory: DirectoryInfo): bool {
+        if (potentialParentDirectory == null || this.path() == null || potentialParentDirectory.path() == null) {
+            return false;
+        }
+
+        var thisPath = pathUtil.resolve(this.path());
+        var potentialParentDirectoryPath = pathUtil.resolve(potentialParentDirectory.path());
+
+        return thisPath.toUpperCase().indexOf(potentialParentDirectoryPath.toUpperCase()) == 0;
+    }
 }

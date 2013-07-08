@@ -286,6 +286,14 @@ var DirectoryInfo = (function (_super) {
     DirectoryInfo.prototype.subDirectoriesList = function () {
         return this._subDirectoriesList;
     };
+    DirectoryInfo.prototype.isSubdirectoryOf = function (potentialParentDirectory) {
+        if(potentialParentDirectory == null || this.path() == null || potentialParentDirectory.path() == null) {
+            return false;
+        }
+        var thisPath = pathUtil.resolve(this.path());
+        var potentialParentDirectoryPath = pathUtil.resolve(potentialParentDirectory.path());
+        return thisPath.toUpperCase().indexOf(potentialParentDirectoryPath.toUpperCase()) == 0;
+    };
     return DirectoryInfo;
 })(FileInfoBase);
 var Manifest = (function () {
@@ -351,6 +359,9 @@ function kuduSync(fromPath, toPath, nextManifestPath, previousManifestPath, igno
     var to = new DirectoryInfo(toPath, toPath);
     if(!from.exists()) {
         return Q.reject(new Error("From directory doesn't exist"));
+    }
+    if(from.isSubdirectoryOf(to) || to.isSubdirectoryOf(from)) {
+        return Q.reject(new Error("Source and destination directories cannot be sub-directories of each other"));
     }
     var nextManifest = new Manifest();
     var ignoreList = parseIgnoreList(ignore);

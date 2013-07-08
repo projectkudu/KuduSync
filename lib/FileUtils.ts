@@ -13,6 +13,10 @@ function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, pr
         return Q.reject(new Error("From directory doesn't exist"));
     }
 
+    if (from.isSubdirectoryOf(to) || to.isSubdirectoryOf(from)) {
+        return Q.reject(new Error("Source and destination directories cannot be sub-directories of each other"));
+    }
+
     var nextManifest = new Manifest();
 
     var ignoreList = parseIgnoreList(ignore);

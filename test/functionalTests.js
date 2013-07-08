@@ -137,7 +137,7 @@ suite('Kudu Sync Functional Tests', function () {
         runKuduSyncTestScenario(["file1", "file2", "file3"], [], null, done, /*whatIf*/true);
     });
 
-    test('Several files and direcotires should not be sync\'d with whatIf flag set to true', function (done) {
+    test('Several files and directories should not be sync\'d with whatIf flag set to true', function (done) {
         runKuduSyncTestScenario(["file1", "file2", "dir1/dir2/file3"], [], null, done, /*whatIf*/true);
     });
 
@@ -250,25 +250,28 @@ suite('Kudu Sync Functional Tests', function () {
     test('From directory doesn\'t exist should fail with an error', function (done) {
         var from = pathUtil.join(baseTestTempDir, testDir, 'doesntexist');
         var to = pathUtil.join(baseTestTempDir, testDir, 'to');
-        var prevManifestPath = pathUtil.join(baseTestTempDir, testDir, 'manifest');
-        var nextManifestPath = pathUtil.join(baseTestTempDir, testDir, 'manifest');
 
-        var command = testTarget.cmd + " -f " + from + " -t " + to + " -n " + nextManifestPath + " -p " + prevManifestPath;
+        runKuduSyncTestExpectError(from, to, done);
+    });
 
-        exec(command,
-            function (error, stdout, stderr) {
-                if (stdout !== '') {
-                    console.log('---------stdout: ---------\n' + stdout);
-                }
-                if (stderr !== '') {
-                    console.log('---------stderr: ---------\n' + stderr);
-                }
-                if (error !== null) {
-                    console.log('---------exec error: ---------\n[' + error + ']');
-                }
-                should.exist(error);
-                done();
-            });
+    test('KuduSync should fail when target is subdirectory of source', function (done) {
+        var from = pathUtil.join(baseTestTempDir, testDir, fromDir);
+        var to = pathUtil.join(from, 'subdirectory');
+
+        ensurePathExists(from);
+        ensurePathExists(to);
+
+        runKuduSyncTestExpectError(from, to, done);
+    });
+
+    test('KuduSync should fail when source is subdirectory of target', function (done) {
+        var to = pathUtil.join(baseTestTempDir, testDir, fromDir);
+        var from = pathUtil.join(to, 'subdirectory');
+
+        ensurePathExists(to);
+        ensurePathExists(from);
+
+        runKuduSyncTestExpectError(from, to, done);
     });
 
     setup(function () {
@@ -308,6 +311,31 @@ function runKuduSyncTestScenario(updatedFiles, expectedFiles, ignore, callback, 
             }
         }, 100);
     });
+}
+
+function runKuduSyncTestExpectError(from, to, callback) {
+    var prevManifestPath = pathUtil.join(baseTestTempDir, testDir, 'manifest');
+    var nextManifestPath = pathUtil.join(baseTestTempDir, testDir, 'manifest');
+
+    var command = testTarget.cmd + " -f " + from + " -t " + to + " -n " + nextManifestPath + " -p " + prevManifestPath;
+    console.log("command: " + command);
+
+    var child = exec(command,
+        function (error, stdout, stderr) {
+            if (stdout !== '') {
+                console.log('---------stdout: ---------\n' + stdout);
+            }
+            if (stderr !== '') {
+                console.log('---------stderr: ---------\n' + stderr);
+            }
+            if (error !== null) {
+                console.log('---------exec error: ---------\n[' + error + ']');
+            }
+            should.exist(error);
+            callback();
+        });
+
+    child.stderr.pipe(process.stderr);
 }
 
 function removeManifestFile() {
