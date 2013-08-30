@@ -532,7 +532,7 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
             });
         }, function () {
             return Utils.mapSerialized(from.subDirectoriesList(), function (fromSubDirectory) {
-                var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()), fromSubDirectory.rootPath());
+                var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()), toRootPath);
                 return kuduSyncDirectory(fromSubDirectory, toSubDirectory, fromRootPath, toRootPath, manifest, outManifest, ignoreList, whatIf);
             });
         });

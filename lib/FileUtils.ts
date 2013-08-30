@@ -265,7 +265,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                 return Utils.mapSerialized(
                     from.subDirectoriesList(),
                     (fromSubDirectory: DirectoryInfo) => {
-                        var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()), fromSubDirectory.rootPath());
+                        var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()), toRootPath);
                         return kuduSyncDirectory(
                             fromSubDirectory,
                             toSubDirectory,
