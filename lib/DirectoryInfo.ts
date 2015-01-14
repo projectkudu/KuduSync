@@ -40,7 +40,7 @@ class DirectoryInfo extends FileInfoBase {
     private _subDirectoriesMapping: DirectoryInfo[];
     private _filesList: FileInfo[];
     private _subDirectoriesList: DirectoryInfo[];
-    private _initialized: bool;
+    private _initialized: boolean;
 
     constructor (path: string, rootPath: string) {
         super(path, rootPath);
@@ -84,10 +84,10 @@ class DirectoryInfo extends FileInfoBase {
     }
 
     updateFilesAndSubDirectoriesLists(): Promise {
-        var filesMapping = new FileInfo[];
-        var filesList = new FileInfo[];
-        var subDirectoriesMapping = new DirectoryInfo[];
-        var subDirectoriesList = new DirectoryInfo[];
+        var filesMapping = new Array<FileInfo>();
+        var filesList = new Array<FileInfo>();
+        var subDirectoriesMapping = new Array<DirectoryInfo>();
+        var subDirectoriesList =  new Array<DirectoryInfo>();
 
         if (this.exists()) {
             return Utils.attempt(() => {
@@ -150,7 +150,7 @@ class DirectoryInfo extends FileInfoBase {
         return this._subDirectoriesList;
     }
 
-    isSubdirectoryOf(potentialParentDirectory: DirectoryInfo): bool {
+    isSubdirectoryOf(potentialParentDirectory: DirectoryInfo): boolean {
         if (potentialParentDirectory == null || this.path() == null || potentialParentDirectory.path() == null) {
             return false;
         }

@@ -21,7 +21,7 @@ class FileInfo extends FileInfoBase {
         return this._size;
     }
 
-    equals(otherFile: FileInfo): bool {
+    equals(otherFile: FileInfo): boolean {
         if (this.modifiedTime() == null || otherFile.modifiedTime() == null) {
             return false;
         }

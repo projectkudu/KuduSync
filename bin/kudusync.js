@@ -1,35 +1,39 @@
+///<reference path='..\typings\node.d.ts'/>
+///<reference path='..\typings\q.d.ts'/>
 var fs = require('fs');
 var pathUtil = require('path');
 var Q = require('q');
 var minimatch = require('minimatch');
 var log = console.log;
-if(!fs.existsSync) {
+// Workaround to support both APIs whether in node 0.6.* or 0.8.0 and higher.
+if (!fs.existsSync)
     fs.existsSync = pathUtil.existsSync;
-}
+///<reference path='header.ts'/>
 var Ensure;
 (function (Ensure) {
     function argNotNull(arg, argName) {
-        if(arg === null || arg === undefined) {
+        if (arg === null || arg === undefined) {
             throw new Error("The argument '" + argName + "' is null");
         }
     }
     Ensure.argNotNull = argNotNull;
 })(Ensure || (Ensure = {}));
-
+///<reference path='ensure.ts'/>
 var Utils;
 (function (Utils) {
-    Utils.DefaultRetries = 3;
-    Utils.DefaultDelayBeforeRetry = 250;
+    var DefaultRetries = 3;
+    var DefaultDelayBeforeRetry = 250; // 250 ms
     function attempt(action, retries, delayBeforeRetry) {
-        if (typeof retries === "undefined") { retries = Utils.DefaultRetries; }
-        if (typeof delayBeforeRetry === "undefined") { delayBeforeRetry = Utils.DefaultDelayBeforeRetry; }
+        if (retries === void 0) { retries = DefaultRetries; }
+        if (delayBeforeRetry === void 0) { delayBeforeRetry = DefaultDelayBeforeRetry; }
         Ensure.argNotNull(action, "action");
         var currentTry = 1;
         var retryAction = function () {
             return action().then(Q.resolve, function (err) {
-                if(retries >= currentTry++) {
+                if (retries >= currentTry++) {
                     return Q.delay(Q.fcall(retryAction), delayBeforeRetry);
-                } else {
+                }
+                else {
                     return Q.reject(err);
                 }
             });
@@ -39,7 +43,7 @@ var Utils;
     Utils.attempt = attempt;
     function map(source, action) {
         var results = [];
-        for(var i = 0; i < source.length; i++) {
+        for (var i = 0; i < source.length; i++) {
             results.push(action(source[i], i));
         }
         return results;
@@ -47,11 +51,11 @@ var Utils;
     Utils.map = map;
     function serialize() {
         var source = [];
-        for (var _i = 0; _i < (arguments.length - 0); _i++) {
-            source[_i] = arguments[_i + 0];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            source[_i - 0] = arguments[_i];
         }
         var result = Q.resolve();
-        for(var i = 0; i < source.length; i++) {
+        for (var i = 0; i < source.length; i++) {
             result = result.then(source[i]);
         }
         return result;
@@ -59,7 +63,7 @@ var Utils;
     Utils.serialize = serialize;
     function mapSerialized(source, action) {
         var result = Q.resolve();
-        for(var i = 0; i < source.length; i++) {
+        for (var i = 0; i < source.length; i++) {
             var func = {
                 source: source[i],
                 index: i,
@@ -67,7 +71,7 @@ var Utils;
                     var self = this;
                     return function () {
                         return action(self.source, self.index);
-                    }
+                    };
                 }
             };
             result = result.then(func.action());
@@ -78,7 +82,7 @@ var Utils;
     function mapParallelized(maxParallel, source, action) {
         var parallelOperations = [];
         var result = Q.resolve();
-        for(var i = 0; i < source.length; i++) {
+        for (var i = 0; i < source.length; i++) {
             var singleOperation = {
                 source: source[i],
                 index: i,
@@ -87,18 +91,20 @@ var Utils;
                 }
             };
             parallelOperations.push(singleOperation);
-            if((i % maxParallel) == (maxParallel - 1) || i == (source.length - 1)) {
+            // Create a complex operation to run once reached maxParallel number of operations
+            // Or this is the last operation
+            if ((i % maxParallel) == (maxParallel - 1) || i == (source.length - 1)) {
                 var complexOperation = {
                     parallelOperations: parallelOperations,
                     action: function () {
                         var self = this;
                         return function () {
                             var promises = [];
-                            for(var j = 0; j < self.parallelOperations.length; j++) {
+                            for (var j = 0; j < self.parallelOperations.length; j++) {
                                 promises.push(self.parallelOperations[j].action());
                             }
                             return Q.all(promises);
-                        }
+                        };
                     }
                 };
                 result = result.then(complexOperation.action());
@@ -109,8 +115,8 @@ var Utils;
     }
     Utils.mapParallelized = mapParallelized;
 })(Utils || (Utils = {}));
-
 exports.Utils = Utils;
+///<reference path='utils.ts'/>
 var FileInfoBase = (function () {
     function FileInfoBase(path, rootPath) {
         Ensure.argNotNull(path, "path");
@@ -131,7 +137,7 @@ var FileInfoBase = (function () {
         return pathUtil.relative(this._rootPath, this._path);
     };
     FileInfoBase.prototype.exists = function () {
-        if(!this._exists) {
+        if (!this._exists) {
             this._exists = fs.existsSync(this.path());
         }
         return this._exists;
@@ -141,11 +147,13 @@ var FileInfoBase = (function () {
     };
     return FileInfoBase;
 })();
+///<reference path='fileInfoBase.ts'/>
 var __extends = this.__extends || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
     __.prototype = b.prototype;
     d.prototype = new __();
-}
+};
 var FileInfo = (function (_super) {
     __extends(FileInfo, _super);
     function FileInfo(path, rootPath, size, modifiedTime) {
@@ -162,32 +170,35 @@ var FileInfo = (function (_super) {
         return this._size;
     };
     FileInfo.prototype.equals = function (otherFile) {
-        if(this.modifiedTime() == null || otherFile.modifiedTime() == null) {
+        if (this.modifiedTime() == null || otherFile.modifiedTime() == null) {
             return false;
         }
         return this.modifiedTime().getTime() === otherFile.modifiedTime().getTime() && this.size() === otherFile.size();
     };
     return FileInfo;
 })(FileInfoBase);
+///<reference path='fileInfo.ts'/>
 var listDir = null;
-try  {
+try {
     listDir = require("../ext/fsx_win32").listDir;
     console.log("Using fsx_win32");
-} catch (e) {
 }
-if(listDir == null) {
+catch (e) {
+}
+if (listDir == null) {
     listDir = function (path) {
         var files = fs.readdirSync(path);
         return Utils.map(files, function (fileName) {
             var filePath = pathUtil.join(path, fileName);
             var stat = fs.statSync(filePath);
-            if(stat.isDirectory()) {
+            if (stat.isDirectory()) {
                 var result = {
                     fileName: fileName,
                     isDirectory: true
                 };
                 return result;
-            } else {
+            }
+            else {
                 var result = {
                     fileName: fileName,
                     size: stat.size,
@@ -210,12 +221,10 @@ var DirectoryInfo = (function (_super) {
     }
     DirectoryInfo.prototype.ensureCreated = function () {
         var _this = this;
-        if(!this.exists()) {
+        if (!this.exists()) {
             var promise = this.parent().ensureCreated();
             promise = promise.then(function () {
-                return Utils.attempt(function () {
-                    return Q.nfcall(fs.mkdir, _this.path());
-                });
+                return Utils.attempt(function () { return Q.nfcall(fs.mkdir, _this.path()); });
             });
             promise = promise.then(function () {
                 _this.setExists(true);
@@ -229,7 +238,7 @@ var DirectoryInfo = (function (_super) {
         return new DirectoryInfo(pathUtil.dirname(this.path()), this.rootPath());
     };
     DirectoryInfo.prototype.initializeFilesAndSubDirectoriesLists = function () {
-        if(!this._initialized && this.exists()) {
+        if (!this._initialized && this.exists()) {
             return this.updateFilesAndSubDirectoriesLists();
         }
         return Q.resolve();
@@ -240,19 +249,22 @@ var DirectoryInfo = (function (_super) {
         var filesList = new Array();
         var subDirectoriesMapping = new Array();
         var subDirectoriesList = new Array();
-        if(this.exists()) {
+        if (this.exists()) {
             return Utils.attempt(function () {
-                try  {
+                try {
                     var files = listDir(_this.path());
                     files.forEach(function (file) {
                         var path = pathUtil.join(_this.path(), file.fileName);
-                        if(file.fileName !== "." && file.fileName !== "..") {
-                            if(file.isDirectory) {
+                        if (file.fileName !== "." && file.fileName !== "..") {
+                            if (file.isDirectory) {
+                                // Store both as mapping as an array
                                 var directoryInfo = new DirectoryInfo(path, _this.rootPath());
                                 directoryInfo.setExists(true);
                                 subDirectoriesMapping[file.fileName.toUpperCase()] = directoryInfo;
                                 subDirectoriesList.push(directoryInfo);
-                            } else {
+                            }
+                            else {
+                                // Store both as mapping as an array
                                 var fileInfo = new FileInfo(path, _this.rootPath(), file.size, file.modifiedTime);
                                 filesMapping[file.fileName.toUpperCase()] = fileInfo;
                                 filesList.push(fileInfo);
@@ -265,7 +277,8 @@ var DirectoryInfo = (function (_super) {
                     _this._subDirectoriesList = subDirectoriesList;
                     _this._initialized = true;
                     return Q.resolve();
-                } catch (err) {
+                }
+                catch (err) {
                     return Q.reject(err);
                 }
             });
@@ -287,7 +300,7 @@ var DirectoryInfo = (function (_super) {
         return this._subDirectoriesList;
     };
     DirectoryInfo.prototype.isSubdirectoryOf = function (potentialParentDirectory) {
-        if(potentialParentDirectory == null || this.path() == null || potentialParentDirectory.path() == null) {
+        if (potentialParentDirectory == null || this.path() == null || potentialParentDirectory.path() == null) {
             return false;
         }
         var thisPath = pathUtil.resolve(this.path());
@@ -296,13 +309,14 @@ var DirectoryInfo = (function (_super) {
     };
     return DirectoryInfo;
 })(FileInfoBase);
+///<reference path='fileInfoBase.ts'/>
 var Manifest = (function () {
     function Manifest() {
         this._files = new Array();
     }
-    Manifest.load = function load(manifestPath) {
+    Manifest.load = function (manifestPath) {
         var manifest = new Manifest();
-        if(manifestPath == null) {
+        if (manifestPath == null) {
             return Q.resolve(manifest);
         }
         return Q.nfcall(fs.readFile, manifestPath, 'utf8').then(function (content) {
@@ -310,33 +324,35 @@ var Manifest = (function () {
             var files = new Array();
             filePaths.forEach(function (filePath) {
                 var file = filePath.trim();
-                if(file != "") {
+                if (file != "") {
                     files[file] = file;
                 }
             });
             manifest._files = files;
             return Q.resolve(manifest);
         }, function (err) {
-            if(err.errno == 34) {
+            // If failed on file not found (34), return an empty manifest
+            if (err.errno == 34) {
                 return Q.resolve(manifest);
-            } else {
+            }
+            else {
                 return Q.reject(err);
             }
         });
-    }
-    Manifest.save = function save(manifest, manifestPath) {
+    };
+    Manifest.save = function (manifest, manifestPath) {
         Ensure.argNotNull(manifest, "manifest");
         Ensure.argNotNull(manifestPath, "manifestPath");
         var manifestFileContent = "";
         var filesForOutput = new Array();
         var i = 0;
-        for(var file in manifest._files) {
+        for (var file in manifest._files) {
             filesForOutput[i] = file;
             i++;
         }
         var manifestFileContent = filesForOutput.join("\n");
         return Q.nfcall(fs.writeFile, manifestPath, manifestFileContent, 'utf8');
-    }
+    };
     Manifest.prototype.isPathInManifest = function (path, rootPath) {
         Ensure.argNotNull(path, "path");
         Ensure.argNotNull(rootPath, "rootPath");
@@ -351,47 +367,44 @@ var Manifest = (function () {
     };
     return Manifest;
 })();
+///<reference path='directoryInfo.ts'/>
+///<reference path='manifest.ts'/>
 function kuduSync(fromPath, toPath, nextManifestPath, previousManifestPath, ignore, whatIf) {
     Ensure.argNotNull(fromPath, "fromPath");
     Ensure.argNotNull(toPath, "toPath");
     Ensure.argNotNull(nextManifestPath, "nextManifestPath");
     var from = new DirectoryInfo(fromPath, fromPath);
     var to = new DirectoryInfo(toPath, toPath);
-    if(!from.exists()) {
+    if (!from.exists()) {
         return Q.reject(new Error("From directory doesn't exist"));
     }
-    if(from.isSubdirectoryOf(to) || to.isSubdirectoryOf(from)) {
+    if (from.isSubdirectoryOf(to) || to.isSubdirectoryOf(from)) {
         return Q.reject(new Error("Source and destination directories cannot be sub-directories of each other"));
     }
     var nextManifest = new Manifest();
     var ignoreList = parseIgnoreList(ignore);
     log("Kudu sync from: '" + from.path() + "' to: '" + to.path() + "'");
-    return Manifest.load(previousManifestPath).then(function (manifest) {
-        return kuduSyncDirectory(from, to, from.path(), to.path(), manifest, nextManifest, ignoreList, whatIf);
-    }).then(function () {
-        if(!whatIf) {
+    return Manifest.load(previousManifestPath).then(function (manifest) { return kuduSyncDirectory(from, to, from.path(), to.path(), manifest, nextManifest, ignoreList, whatIf); }).then(function () {
+        if (!whatIf) {
             return Manifest.save(nextManifest, nextManifestPath);
         }
     });
 }
 exports.kuduSync = kuduSync;
 function parseIgnoreList(ignore) {
-    if(!ignore) {
+    if (!ignore) {
         return null;
     }
     return ignore.split(";");
 }
 function shouldIgnore(path, rootPath, ignoreList) {
-    if(!ignoreList) {
+    if (!ignoreList) {
         return false;
     }
     var relativePath = pathUtil.relative(rootPath, path);
-    for(var i = 0; i < ignoreList.length; i++) {
+    for (var i = 0; i < ignoreList.length; i++) {
         var ignore = ignoreList[i];
-        if(minimatch(relativePath, ignore, {
-            matchBase: true,
-            nocase: true
-        })) {
+        if (minimatch(relativePath, ignore, { matchBase: true, nocase: true })) {
             log("Ignoring: " + relativePath);
             return true;
         }
@@ -402,7 +415,7 @@ function copyFile(fromFile, toFilePath, whatIf) {
     Ensure.argNotNull(fromFile, "fromFile");
     Ensure.argNotNull(toFilePath, "toFilePath");
     log("Copying file: '" + fromFile.relativePath() + "'");
-    if(!whatIf) {
+    if (!whatIf) {
         return Utils.attempt(function () {
             var promise = copyFileInternal(fromFile, toFilePath);
             promise = promise.then(function () {
@@ -415,14 +428,15 @@ function copyFile(fromFile, toFilePath, whatIf) {
 }
 function copyFileInternal(fromFile, toFilePath) {
     var deffered = Q.defer();
-    try  {
+    try {
         var readStream = fs.createReadStream(fromFile.path());
         var writeStream = fs.createWriteStream(toFilePath);
         readStream.pipe(writeStream);
         readStream.on("error", deffered.reject);
         writeStream.on("error", deffered.reject);
         writeStream.on("close", deffered.resolve);
-    } catch (err) {
+    }
+    catch (err) {
         deffered.reject(err);
     }
     return deffered.promise;
@@ -430,12 +444,11 @@ function copyFileInternal(fromFile, toFilePath) {
 function deleteFileIfInManifest(file, manifest, rootPath, whatIf) {
     Ensure.argNotNull(file, "file");
     var path = file.path();
-    if(manifest.isPathInManifest(file.path(), rootPath)) {
+    // Remove file only if it was in previous manifest
+    if (manifest.isPathInManifest(file.path(), rootPath)) {
         log("Deleting file: '" + file.relativePath() + "'");
-        if(!whatIf) {
-            return Utils.attempt(function () {
-                return Q.nfcall(fs.unlink, path);
-            });
+        if (!whatIf) {
+            return Utils.attempt(function () { return Q.nfcall(fs.unlink, path); });
         }
     }
     return Q.resolve();
@@ -444,31 +457,27 @@ function deleteDirectoryRecursive(directory, manifest, rootPath, whatIf) {
     Ensure.argNotNull(directory, "directory");
     var path = directory.path();
     var relativePath = directory.relativePath();
-    if(!manifest.isPathInManifest(path, rootPath)) {
+    // Remove directory only if it was in previous manifest
+    if (!manifest.isPathInManifest(path, rootPath)) {
         return Q.resolve();
     }
     return Utils.serialize(function () {
         return directory.initializeFilesAndSubDirectoriesLists();
     }, function () {
-        return Utils.mapSerialized(directory.filesList(), function (file) {
-            return deleteFileIfInManifest(file, manifest, rootPath, whatIf);
-        });
+        return Utils.mapSerialized(directory.filesList(), function (file) { return deleteFileIfInManifest(file, manifest, rootPath, whatIf); });
     }, function () {
-        return Utils.mapSerialized(directory.subDirectoriesList(), function (subDir) {
-            return deleteDirectoryRecursive(subDir, manifest, rootPath, whatIf);
-        });
+        return Utils.mapSerialized(directory.subDirectoriesList(), function (subDir) { return deleteDirectoryRecursive(subDir, manifest, rootPath, whatIf); });
     }, function () {
         return directory.updateFilesAndSubDirectoriesLists();
     }, function () {
         var filesCount = directory.filesList().length + directory.subDirectoriesList().length;
-        if(filesCount > 0) {
+        if (filesCount > 0) {
             return Q.resolve();
         }
+        // Delete current directory
         log("Deleting directory: '" + relativePath + "'");
-        if(!whatIf) {
-            return Utils.attempt(function () {
-                return Q.nfcall(fs.rmdir, path);
-            });
+        if (!whatIf) {
+            return Utils.attempt(function () { return Q.nfcall(fs.rmdir, path); });
         }
         return Q.resolve();
     });
@@ -480,18 +489,21 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
     Ensure.argNotNull(toRootPath, "toRootPath");
     Ensure.argNotNull(manifest, "manifest");
     Ensure.argNotNull(outManifest, "outManifest");
-    try  {
-        if(shouldIgnore(from.path(), fromRootPath, ignoreList)) {
+    try {
+        if (shouldIgnore(from.path(), fromRootPath, ignoreList)) {
+            // Ignore directories in ignore list
             return Q.resolve();
         }
-        if(!pathUtil.relative(from.path(), toRootPath)) {
+        if (!pathUtil.relative(from.path(), toRootPath)) {
+            // No need to copy the destination path itself (if contained within the source directory)
             return Q.resolve();
         }
-        if(from.path() != fromRootPath) {
+        if (from.path() != fromRootPath) {
             outManifest.addFileToManifest(from.path(), fromRootPath);
         }
+        // Do the following actions one after the other (serialized)
         return Utils.serialize(function () {
-            if(!whatIf) {
+            if (!whatIf) {
                 return to.ensureCreated();
             }
             return Q.resolve();
@@ -500,46 +512,61 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
         }, function () {
             return from.initializeFilesAndSubDirectoriesLists();
         }, function () {
+            // Copy files
             return Utils.mapParallelized(5, from.filesList(), function (fromFile) {
-                if(shouldIgnore(fromFile.path(), fromRootPath, ignoreList)) {
+                if (shouldIgnore(fromFile.path(), fromRootPath, ignoreList)) {
+                    // Ignore files in ignore list
                     return Q.resolve();
                 }
                 outManifest.addFileToManifest(fromFile.path(), fromRootPath);
+                // if the file exists in the destination then only copy it again if it's
+                // last write time is different than the same file in the source (only if it changed)
                 var toFile = to.getFile(fromFile.name());
-                if(toFile == null || !fromFile.equals(toFile)) {
+                if (toFile == null || !fromFile.equals(toFile)) {
                     return copyFile(fromFile, pathUtil.join(to.path(), fromFile.name()), whatIf);
                 }
                 return Q.resolve();
             });
         }, function () {
+            // If the file doesn't exist in the source, only delete if:
+            // 1. We have no previous directory
+            // 2. We have a previous directory and the file exists there
             return Utils.mapSerialized(to.filesList(), function (toFile) {
-                if(shouldIgnore(toFile.path(), toRootPath, ignoreList)) {
+                if (shouldIgnore(toFile.path(), toRootPath, ignoreList)) {
+                    // Ignore files in ignore list
                     return Q.resolve();
                 }
-                if(!from.getFile(toFile.name())) {
+                if (!from.getFile(toFile.name())) {
                     return deleteFileIfInManifest(toFile, manifest, toRootPath, whatIf);
                 }
                 return Q.resolve();
             });
         }, function () {
             return Utils.mapSerialized(to.subDirectoriesList(), function (toSubDirectory) {
-                if(!from.getSubDirectory(toSubDirectory.name())) {
-                    if(manifest.isPathInManifest(toSubDirectory.path(), toRootPath)) {
+                // If the file doesn't exist in the source, only delete if:
+                // 1. We have no previous directory
+                // 2. We have a previous directory and the file exists there
+                if (!from.getSubDirectory(toSubDirectory.name())) {
+                    if (manifest.isPathInManifest(toSubDirectory.path(), toRootPath)) {
                         return deleteDirectoryRecursive(toSubDirectory, manifest, toRootPath, whatIf);
                     }
                 }
                 return Q.resolve();
             });
         }, function () {
+            // Copy directories
             return Utils.mapSerialized(from.subDirectoriesList(), function (fromSubDirectory) {
                 var toSubDirectory = new DirectoryInfo(pathUtil.join(to.path(), fromSubDirectory.name()), toRootPath);
                 return kuduSyncDirectory(fromSubDirectory, toSubDirectory, fromRootPath, toRootPath, manifest, outManifest, ignoreList, whatIf);
             });
         });
-    } catch (err) {
+    }
+    catch (err) {
         return Q.reject(err);
     }
 }
+///<reference path='fileUtils.ts'/>
+///<reference path='../typings/commander.d.ts'/>
 function main() {
     var commander = require("commander");
     commander.version("0.0.1").usage("[options]").option("-f, --fromDir <dir path>", "Source directory to sync").option("-t, --toDir <dir path>", "Destination directory to sync").option("-n, --nextManifest <manifest file path>", "Next manifest file path").option("-p, --previousManifest [manifest file path]", "Previous manifest file path").option("-i, --ignore [patterns]", "List of files/directories to ignore and not sync, delimited by ;").option("-q, --quiet", "No logging").option("-v, --verbose [maxLines]", "Verbose logging with maximum number of output lines").option("-w, --whatIf", "Only log without actual copy/remove of files").option("--perf", "Print out the time it took to complete KuduSync operation").parse(process.argv);
@@ -553,40 +580,43 @@ function main() {
     var verbose = commanderValues.verbose;
     var whatIf = commanderValues.whatIf;
     var perf = commanderValues.perf;
-    if(quiet && verbose) {
+    if (quiet && verbose) {
         console.log("Error: Cannot use --quiet and --verbose arguments together");
+        // Exit with an error code
         process.exit(1);
         return;
     }
-    if(!fromDir || !toDir || !nextManifest) {
+    if (!fromDir || !toDir || !nextManifest) {
         console.log("Error: Missing required argument");
         commander.help();
+        // Exit with an error code
         process.exit(1);
         return;
     }
-    if(quiet) {
+    if (quiet) {
+        // Change log to be no op
         log = function () {
         };
     }
     var counter = 0;
     var nextLogTime = null;
-    if(verbose && verbose > 0) {
+    if (verbose && verbose > 0) {
         log = function (msg) {
             var updateLogTime = false;
-            if(counter < verbose) {
+            if (counter < verbose) {
                 console.log(msg);
-            } else {
-                if(counter == verbose) {
-                    console.log("Omitting next output lines...");
+            }
+            else if (counter == verbose) {
+                console.log("Omitting next output lines...");
+                updateLogTime = true;
+            }
+            else {
+                if (new Date().getTime() >= nextLogTime.getTime()) {
+                    console.log("Processed " + (counter - 1) + " files...");
                     updateLogTime = true;
-                } else {
-                    if(new Date().getTime() >= nextLogTime.getTime()) {
-                        console.log("Processed " + (counter - 1) + " files...");
-                        updateLogTime = true;
-                    }
                 }
             }
-            if(updateLogTime) {
+            if (updateLogTime) {
                 var currentDate = new Date();
                 nextLogTime = new Date(currentDate.getTime() + 20000);
             }
@@ -595,15 +625,17 @@ function main() {
     }
     var start = new Date();
     kuduSync(fromDir, toDir, nextManifest, previousManifest, ignore, whatIf).then(function () {
-        if(perf) {
+        if (perf) {
             var stop = new Date();
             console.log("Operation took " + ((stop.getTime() - start.getTime()) / 1000) + " seconds");
         }
         process.exit(0);
     }, function (err) {
-        if(err) {
+        if (err) {
+            // Errors should always be logged
             console.log("" + err);
         }
+        // Exit with an error code
         process.exit(1);
     });
 }

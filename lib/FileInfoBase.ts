@@ -4,7 +4,7 @@ class FileInfoBase {
     private _name: string;
     private _path: string;
     private _rootPath: string;
-    private _exists: bool;
+    private _exists: boolean;
 
     constructor (path: string, rootPath: string) {
         Ensure.argNotNull(path, "path");
@@ -30,14 +30,14 @@ class FileInfoBase {
         return pathUtil.relative(this._rootPath, this._path);
     }
 
-    exists(): bool {
+    exists(): boolean {
         if (!this._exists) {
             this._exists = fs.existsSync(this.path());
         }
         return this._exists;
     }
 
-    setExists(val: bool) {
+    setExists(val: boolean) {
         this._exists = val;
     }
 }

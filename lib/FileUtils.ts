@@ -1,7 +1,7 @@
 ///<reference path='directoryInfo.ts'/>
 ///<reference path='manifest.ts'/>
 
-function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, previousManifestPath: string, ignore: string, whatIf: bool) : Promise {
+function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, previousManifestPath: string, ignore: string, whatIf: boolean) : Promise {
     Ensure.argNotNull(fromPath, "fromPath");
     Ensure.argNotNull(toPath, "toPath");
     Ensure.argNotNull(nextManifestPath, "nextManifestPath");
@@ -42,7 +42,7 @@ function parseIgnoreList(ignore: string): string[] {
     return ignore.split(";");
 }
 
-function shouldIgnore(path: string, rootPath: string, ignoreList: string[]): bool {
+function shouldIgnore(path: string, rootPath: string, ignoreList: string[]): boolean {
     if (!ignoreList) {
         return false;
     }
@@ -60,7 +60,7 @@ function shouldIgnore(path: string, rootPath: string, ignoreList: string[]): boo
     return false;
 }
 
-function copyFile(fromFile: FileInfo, toFilePath: string, whatIf: bool) : Promise {
+function copyFile(fromFile: FileInfo, toFilePath: string, whatIf: boolean) : Promise {
     Ensure.argNotNull(fromFile, "fromFile");
     Ensure.argNotNull(toFilePath, "toFilePath");
 
@@ -97,7 +97,7 @@ function copyFileInternal(fromFile: FileInfo, toFilePath: string): Promise {
     return deffered.promise;
 }
 
-function deleteFileIfInManifest(file: FileInfo, manifest: Manifest, rootPath: string, whatIf: bool) : Promise {
+function deleteFileIfInManifest(file: FileInfo, manifest: Manifest, rootPath: string, whatIf: boolean) : Promise {
     Ensure.argNotNull(file, "file");
 
     var path = file.path();
@@ -114,7 +114,7 @@ function deleteFileIfInManifest(file: FileInfo, manifest: Manifest, rootPath: st
     return Q.resolve();
 }
 
-function deleteDirectoryRecursive(directory: DirectoryInfo, manifest: Manifest, rootPath: string, whatIf: bool) {
+function deleteDirectoryRecursive(directory: DirectoryInfo, manifest: Manifest, rootPath: string, whatIf: boolean) {
     Ensure.argNotNull(directory, "directory");
 
     var path = directory.path();
@@ -157,7 +157,7 @@ function deleteDirectoryRecursive(directory: DirectoryInfo, manifest: Manifest, 
         });
 }
 
-function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath: string, toRootPath: string, manifest: Manifest, outManifest: Manifest, ignoreList: string[], whatIf: bool) {
+function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath: string, toRootPath: string, manifest: Manifest, outManifest: Manifest, ignoreList: string[], whatIf: boolean) {
     Ensure.argNotNull(from, "from");
     Ensure.argNotNull(to, "to");
     Ensure.argNotNull(fromRootPath, "fromRootPath");
