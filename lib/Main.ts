@@ -2,7 +2,7 @@
 ///<reference path='../typings/commander.d.ts'/>
 
 function main() {
-    var commander: Commander = require("commander");
+    var commander = require("commander");
 
     commander
         .version("0.0.1")
@@ -57,7 +57,7 @@ function main() {
     var nextLogTime: Date = null;
     if (verbose && verbose > 0) {
         log = (msg) => {
-            var updateLogTime: bool = false;
+            var updateLogTime: boolean = false;
 
             if (counter < verbose) {
                 console.log(msg);

@@ -5,7 +5,7 @@ class Manifest {
     private _files: string[];
 
     constructor () {
-        this._files = new string[];
+        this._files = new Array<string>();
     }
 
     static load(manifestPath: string) {
@@ -18,7 +18,7 @@ class Manifest {
         return Q.nfcall(fs.readFile, manifestPath, 'utf8').then(
             function(content?) {
                 var filePaths = content.split("\n");
-                var files = new string[];
+                var files = new Array<string>();
                 filePaths.forEach(
                     function (filePath) {
                         var file = filePath.trim();
@@ -46,7 +46,7 @@ class Manifest {
         Ensure.argNotNull(manifestPath, "manifestPath");
 
         var manifestFileContent = "";
-        var filesForOutput = new string[];
+        var filesForOutput = new Array<string>();
 
         var i = 0;
         for (var file in manifest._files) {
