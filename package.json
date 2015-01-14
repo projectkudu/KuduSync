@@ -1,6 +1,6 @@
 {
   "name": "kudusync",
-  "author": "Outercurve Foundation",
+  "author": ".NET Foundation",
   "version": "0.1.24",
   "description": "Tool for syncing files for deployment, will only copy changed files and delete files that doesn't exists in the destination but only if they were part of the previous deployment.",
   "tags": [
@@ -17,7 +17,7 @@
     "node": ">= 0.6.20"
   },
   "scripts": {
-    "build": "tsc --module node --out bin/kudusync.js lib/main.ts",
+    "build": "tsc --out bin/kudusync.js lib/main.ts",
     "test": "mocha -u tdd test -R spec --slow 3000 --timeout 6000"
   },
   "repository": {
@@ -29,7 +29,7 @@
     "url": "http://github.com/projectkudu/KuduSync/issues"
   },
   "bin": {
-    "kuduSync": "./bin/kudusync"
+    "kudusync": "./bin/kudusync"
   },
   "licenses": [
     {
@@ -39,13 +39,13 @@
   ],
   "readmeFilename": "README.markdown",
   "devDependencies": {
-    "typescript": "0.8.0",
-    "mocha": "1.6.0",
-    "should": "1.2.1"
+    "typescript": "1.3.0",
+    "mocha": "2.1.0",
+    "should": "4.6.0"
   },
   "dependencies": {
-    "q": "1.0.1",
-    "minimatch": "0.2.9",
-    "commander": "1.1.1"
+    "q": "1.1.2",
+    "minimatch": "2.0.1",
+    "commander": "2.6.0"
   }
 }
