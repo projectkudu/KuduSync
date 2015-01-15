@@ -1,4 +1,4 @@
-///<reference path='fileInfo.ts'/>
+///<reference path='FileInfo.ts'/>
 
 var listDir: (path: string) => any[] = null;
 

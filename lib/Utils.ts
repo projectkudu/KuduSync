@@ -1,4 +1,4 @@
-///<reference path='ensure.ts'/>
+///<reference path='Ensure.ts'/>
 
 module Utils {
     private DefaultRetries: number = 3;

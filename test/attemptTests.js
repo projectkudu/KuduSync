@@ -1,10 +1,10 @@
 // Functional tests using mocha and should.
 
 // The tested module
-var ks = require("../bin/kuduSync.js");
+var ks = require("../bin/kudusync.js");
 
 var should = require("should");
-var Q = require("Q");
+var Q = require("q");
 
 var attempts = 0;
 

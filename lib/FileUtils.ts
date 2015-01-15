@@ -1,5 +1,5 @@
-///<reference path='directoryInfo.ts'/>
-///<reference path='manifest.ts'/>
+///<reference path='DirectoryInfo.ts'/>
+///<reference path='Manifest.ts'/>
 
 function kuduSync(fromPath: string, toPath: string, nextManifestPath: string, previousManifestPath: string, ignore: string, whatIf: bool) : Promise {
     Ensure.argNotNull(fromPath, "fromPath");

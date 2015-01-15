@@ -1,4 +1,4 @@
-///<reference path='header.ts'/>
+///<reference path='Header.ts'/>
 
 module Ensure {
     export function argNotNull(arg, argName: string) {

@@ -1,4 +1,4 @@
-///<reference path='fileUtils.ts'/>
+///<reference path='FileUtils.ts'/>
 ///<reference path='../typings/commander.d.ts'/>
 
 function main() {
@@ -109,3 +109,4 @@ function main() {
 }
 
 exports.main = main;
+

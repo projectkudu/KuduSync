@@ -30,7 +30,7 @@ suite('Kudu Sync Functional Tests', function () {
     };
 
     test('Single file should be sync\'d', function (done) {
-        var testedFiles = ["file1"];
+        var testedFiles = ["FILE1"];
         runKuduSyncTestScenario(testedFiles, testedFiles, null, done); // Files to create, Files to expect
     });
 

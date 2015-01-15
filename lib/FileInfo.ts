@@ -1,4 +1,4 @@
-///<reference path='fileInfoBase.ts'/>
+///<reference path='FileInfoBase.ts'/>
 
 class FileInfo extends FileInfoBase {
     private _size;
