@@ -30,7 +30,7 @@ suite('Kudu Sync Functional Tests', function () {
     };
 
     test('Single file should be sync\'d', function (done) {
-        var testedFiles = ["FILE1"];
+        var testedFiles = ["file1"];
         runKuduSyncTestScenario(testedFiles, testedFiles, null, done); // Files to create, Files to expect
     });
 
@@ -405,7 +405,8 @@ function runKuduSync(prevManifestFile, nextManifestFile, ignore, whatIf, callbac
 function generateFromFiles(files) {
     for (var index in files) {
         var file = files[index];
-        file = file.toUpperCase(); // to find casing bugs
+        // to find casing issues on windows
+        file = /^win/.test(process.platform) ? file.toUpperCase() : file;
         generateFromFile(file);
     }
 }
