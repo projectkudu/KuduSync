@@ -3,9 +3,10 @@
 
 function main() {
     var commander: Commander = require("commander");
+    var package = require("../package.json");
 
     commander
-        .version("0.0.1")
+        .version(package.version)
         .usage("[options]")
         .option("-f, --fromDir <dir path>", "Source directory to sync")
         .option("-t, --toDir <dir path>", "Destination directory to sync")
