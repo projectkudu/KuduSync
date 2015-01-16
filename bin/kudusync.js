@@ -292,7 +292,11 @@ var DirectoryInfo = (function (_super) {
         }
         var thisPath = pathUtil.resolve(this.path());
         var potentialParentDirectoryPath = pathUtil.resolve(potentialParentDirectory.path());
-        return thisPath.toUpperCase().indexOf(potentialParentDirectoryPath.toUpperCase()) == 0;
+        if(thisPath.toUpperCase().indexOf(potentialParentDirectoryPath.toUpperCase()) == 0) {
+            var pathPart = thisPath.substr(potentialParentDirectoryPath.length);
+            return pathPart.indexOf('/') >= 0 || pathPart.indexOf('\\') >= 0;
+        }
+        return false;
     };
     return DirectoryInfo;
 })(FileInfoBase);
@@ -542,7 +546,8 @@ function kuduSyncDirectory(from, to, fromRootPath, toRootPath, manifest, outMani
 }
 function main() {
     var commander = require("commander");
-    commander.version("0.0.1").usage("[options]").option("-f, --fromDir <dir path>", "Source directory to sync").option("-t, --toDir <dir path>", "Destination directory to sync").option("-n, --nextManifest <manifest file path>", "Next manifest file path").option("-p, --previousManifest [manifest file path]", "Previous manifest file path").option("-i, --ignore [patterns]", "List of files/directories to ignore and not sync, delimited by ;").option("-q, --quiet", "No logging").option("-v, --verbose [maxLines]", "Verbose logging with maximum number of output lines").option("-w, --whatIf", "Only log without actual copy/remove of files").option("--perf", "Print out the time it took to complete KuduSync operation").parse(process.argv);
+    var package = require("../package.json");
+    commander.version(package.version).usage("[options]").option("-f, --fromDir <dir path>", "Source directory to sync").option("-t, --toDir <dir path>", "Destination directory to sync").option("-n, --nextManifest <manifest file path>", "Next manifest file path").option("-p, --previousManifest [manifest file path]", "Previous manifest file path").option("-i, --ignore [patterns]", "List of files/directories to ignore and not sync, delimited by ;").option("-q, --quiet", "No logging").option("-v, --verbose [maxLines]", "Verbose logging with maximum number of output lines").option("-w, --whatIf", "Only log without actual copy/remove of files").option("--perf", "Print out the time it took to complete KuduSync operation").parse(process.argv);
     var commanderValues = commander;
     var fromDir = commanderValues.fromDir;
     var toDir = commanderValues.toDir;

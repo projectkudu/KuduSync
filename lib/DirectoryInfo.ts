@@ -42,7 +42,7 @@ class DirectoryInfo extends FileInfoBase {
     private _subDirectoriesList: DirectoryInfo[];
     private _initialized: bool;
 
-    constructor (path: string, rootPath: string) {
+    constructor(path: string, rootPath: string) {
         super(path, rootPath);
 
         this._filesMapping = [];
@@ -52,7 +52,7 @@ class DirectoryInfo extends FileInfoBase {
         this._initialized = false;
     }
 
-    ensureCreated() : Promise {
+    ensureCreated(): Promise {
         if (!this.exists()) {
             var promise = this.parent().ensureCreated();
 
@@ -158,6 +158,11 @@ class DirectoryInfo extends FileInfoBase {
         var thisPath = pathUtil.resolve(this.path());
         var potentialParentDirectoryPath = pathUtil.resolve(potentialParentDirectory.path());
 
-        return thisPath.toUpperCase().indexOf(potentialParentDirectoryPath.toUpperCase()) == 0;
+        if (thisPath.toUpperCase().indexOf(potentialParentDirectoryPath.toUpperCase()) == 0) {
+            var pathPart = thisPath.substr(potentialParentDirectoryPath.length);
+            return pathPart.indexOf('/') >= 0 || pathPart.indexOf('\\') >= 0;
+        }
+
+        return false;
     }
 }
