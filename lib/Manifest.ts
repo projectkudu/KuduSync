@@ -31,8 +31,8 @@ class Manifest {
                 return Q.resolve(manifest);
             },
             function(err?) {
-                // If failed on file not found (34), return an empty manifest
-                if (err.errno == 34) {
+                // If failed on file not found (34/-4058), return an empty manifest
+                if (err.errno == 34 || err.errno == -4058) {
                     return Q.resolve(manifest);
                 }
                 else {

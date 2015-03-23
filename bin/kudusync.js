@@ -321,7 +321,7 @@ var Manifest = (function () {
             manifest._files = files;
             return Q.resolve(manifest);
         }, function (err) {
-            if(err.errno == 34) {
+            if(err.errno == 34 || err.errno == -4058) {
                 return Q.resolve(manifest);
             } else {
                 return Q.reject(err);

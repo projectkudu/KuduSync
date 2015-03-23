@@ -494,7 +494,7 @@ function tryGetFileStat(path) {
         return fs.statSync(path);
     }
     catch (e) {
-        if (e.errno == 34) {
+        if (e.errno == 34 || e.errno == -4058) { 
             // Return null if path doesn't exist
             return null;
         }
