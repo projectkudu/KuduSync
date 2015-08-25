@@ -1,4 +1,5 @@
 ///<reference path='FileInfoBase.ts'/>
+var nodePath = require("path");
 
 class Manifest {
 
@@ -58,19 +59,25 @@ class Manifest {
         return Q.nfcall(fs.writeFile, manifestPath, manifestFileContent, 'utf8');
     }
 
-    isPathInManifest(path: string, rootPath: string) {
+    isPathInManifest(path: string, rootPath: string, targetSubFolder: string) {
         Ensure.argNotNull(path, "path");
         Ensure.argNotNull(rootPath, "rootPath");
 
         var relativePath = pathUtil.relative(rootPath, path);
+        relativePath = (targetSubFolder
+                ? nodePath.join(targetSubFolder, relativePath)
+                : relativePath);
         return this._files[relativePath] != null;
     }
 
-    addFileToManifest(path: string, rootPath: string) {
+    addFileToManifest(path: string, rootPath: string, targetSubFolder: string) {
         Ensure.argNotNull(path, "path");
         Ensure.argNotNull(rootPath, "rootPath");
 
         var relativePath = pathUtil.relative(rootPath, path);
+        relativePath = (targetSubFolder
+                ? nodePath.join(targetSubFolder, relativePath)
+                : relativePath);
         this._files[relativePath] = relativePath;
     }
 }
