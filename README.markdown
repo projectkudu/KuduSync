@@ -11,7 +11,7 @@ Install from npm - `npm install -g kudusync`
 
 kudusync `-f [source path] -t [destination path] -n [path to next manifest path] -p [path to current manifest path] -i <paths to ignore delimited by ;>`
 
-The tool will sync files from the `[source path]` to the `[destination path]` using the manifest file in `[path to current manifest path]` to help determine what was added/removed and will write the new manifest file at `[path to current manifest path]`.
+The tool will sync files from the `[source path]` to the `[destination path]` using the manifest file in `[path to current manifest]` to help determine what was added/removed, and will write the new manifest file at `[path to current manifest]`.
 Paths in `<paths to ignore>` will be ignored in the process
 
 
