@@ -82,6 +82,19 @@ suite('Kudu Sync Functional Tests', function () {
         });
     });
 
+    test('Single file created then file created only in destination, new file should be removed with -x', function (done) {
+        runKuduSyncTestScenario(["file1"], ["file1"], null, function (err) {
+            if (err) {
+                return done(err);
+            }
+
+            // Generating a file only in the destination directory, this should be removed with -x
+            generateToFile("tofile");
+
+            runKuduSyncTestScenario([], ["file1", "-tofile"], null, done, false /* whatIf */, true /* ignoreManifest */);
+        });
+    });
+
     test('Directory should not be removed if not empty', function (done) {
         runKuduSyncTestScenario(["file1", "dir1/file2"], ["file1", "dir1/file2"], null, function () {
             // Generating a file only in the destination directory, this shouldn't be removed
@@ -107,6 +120,16 @@ suite('Kudu Sync Functional Tests', function () {
             generateToFile("dir1/dir2/tofile2");
 
             runKuduSyncTestScenario(["-file1"], ["-file1", "dir1/file2", "dir1/dir2/tofile1", "dir1/dir2/tofile2"], null, done);
+        });
+    });
+
+    test('Several files created then file created only in destination, new files should be removed with -x', function (done) {
+        runKuduSyncTestScenario(["file1", "dir1/file2"], ["file1", "dir1/file2"], null, function () {
+            // Generating files only in the destination directory, those files should be removed with -x
+            generateToFile("dir1/dir2/tofile1");
+            generateToFile("dir1/dir2/tofile2");
+
+            runKuduSyncTestScenario(["-file1"], ["-file1", "dir1/file2", "-dir1/dir2/tofile1", "-dir1/dir2/tofile2"], null, done, false /* whatIf */, true /* ignoreManifest */);
         });
     });
 
@@ -291,10 +314,10 @@ suite('Kudu Sync Functional Tests', function () {
 // 1. Create/update or remove files from updatedFiles on the source path
 // 2. Run the kudu sync function
 // 3. Verify expectedFiles exist (or not exist) in the destination path
-function runKuduSyncTestScenario(updatedFiles, expectedFiles, ignore, callback, whatIf) {
+function runKuduSyncTestScenario(updatedFiles, expectedFiles, ignore, callback, whatIf, ignoreManifest) {
     generateFromFiles(updatedFiles);
 
-    runKuduSync("manifest1", "manifest1", ignore, whatIf, function (err) {
+    runKuduSync("manifest1", "manifest1", ignoreManifest, ignore, whatIf, function (err) {
         if (err) {
             callback(err);
             return;
@@ -371,13 +394,18 @@ function testFileShouldBeEqual(file) {
     filesShouldBeEqual(from, to, file);
 }
 
-function runKuduSync(prevManifestFile, nextManifestFile, ignore, whatIf, callback) {
+function runKuduSync(prevManifestFile, nextManifestFile, ignoreManifest, ignore, whatIf, callback) {
     var from = pathUtil.join(baseTestTempDir, testDir, fromDir);
     var to = pathUtil.join(baseTestTempDir, testDir, toDir);
     var prevManifestPath = pathUtil.join(baseTestTempDir, testDir, prevManifestFile);
     var nextManifestPath = pathUtil.join(baseTestTempDir, testDir, nextManifestFile);
 
     var command = testTarget.cmd + " -f " + from + " -t " + to + " -n " + nextManifestPath + " -p " + prevManifestPath;
+    
+    if (ignoreManifest) {
+        command += " -x";
+    }
+
     if (ignore) {
         command += " -i \"" + ignore + "\"";
     }
