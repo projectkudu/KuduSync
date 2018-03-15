@@ -14,6 +14,7 @@ function main() {
         .option("-s, --targetSubFolder <dir path>", "A relative sub folder in the destination to create and copy files to")
         .option("-n, --nextManifest <manifest file path>", "Next manifest file path")
         .option("-p, --previousManifest [manifest file path]", "Previous manifest file path")
+        .option("-x, --ignoreManifest", "Disables the processing of the manifest file")
         .option("-i, --ignore [patterns]", "List of files/directories to ignore and not sync, delimited by ;")
         .option("-q, --quiet", "No logging")
         .option("-v, --verbose [maxLines]", "Verbose logging with maximum number of output lines")
@@ -27,6 +28,7 @@ function main() {
     var targetSubFolder = commanderValues.targetSubFolder;
     var previousManifest = commanderValues.previousManifest;
     var nextManifest = commanderValues.nextManifest;
+    var ignoreManifest = commanderValues.ignoreManifest;
     var ignore = commanderValues.ignore;
     var quiet = commanderValues.quiet;
     var verbose = commanderValues.verbose;
@@ -97,6 +99,7 @@ function main() {
         targetSubFolder,
         nextManifest,
         previousManifest,
+        ignoreManifest,
         ignore,
         whatIf).then(
             () => {

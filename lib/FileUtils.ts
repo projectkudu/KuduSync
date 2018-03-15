@@ -1,10 +1,14 @@
 ///<reference path='DirectoryInfo.ts'/>
 ///<reference path='Manifest.ts'/>
 
-function kuduSync(fromPath: string, toPath: string, targetSubFolder: string, nextManifestPath: string, previousManifestPath: string, ignore: string, whatIf: bool) : Promise {
+function kuduSync(fromPath: string, toPath: string, targetSubFolder: string, nextManifestPath: string, previousManifestPath: string, ignoreManifest: bool, ignore: string, whatIf: bool) : Promise {
     Ensure.argNotNull(fromPath, "fromPath");
     Ensure.argNotNull(toPath, "toPath");
     Ensure.argNotNull(nextManifestPath, "nextManifestPath");
+
+    if (ignoreManifest) {
+        previousManifestPath = null;
+    }
 
     var from = new DirectoryInfo(fromPath, fromPath);
     var to = new DirectoryInfo(toPath, toPath);
@@ -24,7 +28,7 @@ function kuduSync(fromPath: string, toPath: string, targetSubFolder: string, nex
     log("Kudu sync from: '" + from.path() + "' to: '" + to.path() + "'");
 
     return Manifest.load(previousManifestPath)
-                    .then((manifest) => kuduSyncDirectory(from, to, from.path(), to.path(), targetSubFolder, manifest, nextManifest, ignoreList, whatIf))
+                    .then((manifest) => kuduSyncDirectory(from, to, from.path(), to.path(), targetSubFolder, manifest, nextManifest, ignoreManifest, ignoreList, whatIf))
                     .then(() => {
                         if (!whatIf) {
                             return Manifest.save(nextManifest, nextManifestPath);
@@ -97,13 +101,13 @@ function copyFileInternal(fromFile: FileInfo, toFilePath: string): Promise {
     return deffered.promise;
 }
 
-function deleteFileIfInManifest(file: FileInfo, manifest: Manifest, rootPath: string, targetSubFolder: string, whatIf: bool) : Promise {
+function deleteFile(file: FileInfo, manifest: Manifest, rootPath: string, targetSubFolder: string, ignoreManifest: bool, whatIf: bool) : Promise {
     Ensure.argNotNull(file, "file");
 
     var path = file.path();
 
-    // Remove file only if it was in previous manifest
-    if (manifest.isPathInManifest(file.path(), rootPath, targetSubFolder)) {
+    // Remove file only if it was in previous manifest or if manifest is to be ignored
+    if (ignoreManifest || manifest.isPathInManifest(file.path(), rootPath, targetSubFolder)) {
         log("Deleting file: '" + file.relativePath() + "'");
 
         if (!whatIf) {
@@ -114,14 +118,14 @@ function deleteFileIfInManifest(file: FileInfo, manifest: Manifest, rootPath: st
     return Q.resolve();
 }
 
-function deleteDirectoryRecursive(directory: DirectoryInfo, manifest: Manifest, rootPath: string, targetSubFolder: string, whatIf: bool) {
+function deleteDirectoryRecursive(directory: DirectoryInfo, manifest: Manifest, rootPath: string, targetSubFolder: string, ignoreManifest: bool, whatIf: bool) {
     Ensure.argNotNull(directory, "directory");
 
     var path = directory.path();
     var relativePath = directory.relativePath();
 
-    // Remove directory only if it was in previous manifest
-    if (!manifest.isPathInManifest(path, rootPath, targetSubFolder)) {
+    // Remove directory only if it was in previous manifest or if manifest is to be ignored
+    if (!ignoreManifest && !manifest.isPathInManifest(path, rootPath, targetSubFolder)) {
         return Q.resolve();
     }
 
@@ -131,11 +135,11 @@ function deleteDirectoryRecursive(directory: DirectoryInfo, manifest: Manifest, 
         },
 
         () => {
-            return Utils.mapSerialized(directory.filesList(), (file: FileInfo) => deleteFileIfInManifest(file, manifest, rootPath, targetSubFolder, whatIf));
+            return Utils.mapSerialized(directory.filesList(), (file: FileInfo) => deleteFile(file, manifest, rootPath, targetSubFolder, ignoreManifest, whatIf));
         },
 
         () => {
-            return Utils.mapSerialized(directory.subDirectoriesList(), (subDir) => deleteDirectoryRecursive(subDir, manifest, rootPath, targetSubFolder, whatIf));
+            return Utils.mapSerialized(directory.subDirectoriesList(), (subDir) => deleteDirectoryRecursive(subDir, manifest, rootPath, targetSubFolder, ignoreManifest, whatIf));
         },
 
         () => {
@@ -157,7 +161,7 @@ function deleteDirectoryRecursive(directory: DirectoryInfo, manifest: Manifest, 
         });
 }
 
-function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath: string, toRootPath: string, targetSubFolder: string, manifest: Manifest, outManifest: Manifest, ignoreList: string[], whatIf: bool) {
+function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath: string, toRootPath: string, targetSubFolder: string, manifest: Manifest, outManifest: Manifest, ignoreManifest: bool, ignoreList: string[], whatIf: bool) {
     Ensure.argNotNull(from, "from");
     Ensure.argNotNull(to, "to");
     Ensure.argNotNull(fromRootPath, "fromRootPath");
@@ -236,7 +240,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                         }
 
                         if (!from.getFile(toFile.name())) {
-                            return deleteFileIfInManifest(toFile, manifest, toRootPath, targetSubFolder, whatIf);
+                            return deleteFile(toFile, manifest, toRootPath, targetSubFolder, ignoreManifest, whatIf);
                         }
                         return Q.resolve();
                     }
@@ -251,9 +255,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                         // 1. We have no previous directory
                         // 2. We have a previous directory and the file exists there
                         if (!from.getSubDirectory(toSubDirectory.name())) {
-                            if (manifest.isPathInManifest(toSubDirectory.path(), toRootPath, targetSubFolder)) {
-                                return deleteDirectoryRecursive(toSubDirectory, manifest, toRootPath, targetSubFolder, whatIf);
-                            }
+                            return deleteDirectoryRecursive(toSubDirectory, manifest, toRootPath, targetSubFolder, ignoreManifest, whatIf);
                         }
                         return Q.resolve();
                     }
@@ -274,6 +276,7 @@ function kuduSyncDirectory(from: DirectoryInfo, to: DirectoryInfo, fromRootPath:
                             targetSubFolder,
                             manifest,
                             outManifest,
+                            ignoreManifest,
                             ignoreList,
                             whatIf);
                     }
