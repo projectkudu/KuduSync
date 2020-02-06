@@ -45,7 +45,7 @@
   },
   "dependencies": {
     "q": "1.1.2",
-    "minimatch": "2.0.1",
+    "minimatch": "3.0.4",
     "commander": "2.6.0"
   }
 }
