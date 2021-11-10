@@ -263,6 +263,14 @@ suite('Kudu Sync Functional Tests', function () {
         });
     });
 
+    test('File remove and replaced with directory', function (done) {
+        runKuduSyncTestScenario(["file1", "dir1/LICENSE/LICENSE"], ["file1", "dir1/LICENSE/LICENSE"], null, function () {
+            var testedFiles = ["-dir1/LICENSE/LICENSE", "-dir1/LICENSE", "dir1/LICENSE"];
+            var expectedFiles = ["file1", "dir1/LICENSE"];
+            runKuduSyncTestScenario(testedFiles, expectedFiles, null, done);
+        });
+    });
+
     test('Clean before sync when it\'s the first sync (manifest is empty)', function (done) {
         generateToFile("dir1/dir2/tofile3");
         var testedFiles = ["file4", "file5", "file6"];
