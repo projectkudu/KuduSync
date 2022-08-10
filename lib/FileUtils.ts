@@ -111,7 +111,7 @@ function deleteFile(file: FileInfo, manifest: Manifest, rootPath: string, target
         log("Deleting file: '" + file.relativePath() + "'");
 
         if (!whatIf) {
-            return Utils.attempt(() => Q.nfcall(fs.unlink, path));
+            return Utils.attempt(() => Q.nfcall(fs.unlink, path), "ENOENT");
         }
     }
     
@@ -155,7 +155,7 @@ function deleteDirectoryRecursive(directory: DirectoryInfo, manifest: Manifest, 
             // Delete current directory
             log("Deleting directory: '" + relativePath + "'");
             if (!whatIf) {
-                return Utils.attempt(() => Q.nfcall(fs.rmdir, path));
+                return Utils.attempt(() => Q.nfcall(fs.rmdir, path), "ENOENT");
             }
             return Q.resolve();
         });

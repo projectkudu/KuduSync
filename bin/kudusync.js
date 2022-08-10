@@ -20,17 +20,21 @@ var Utils;
 (function (Utils) {
     Utils.DefaultRetries = 3;
     Utils.DefaultDelayBeforeRetry = 250;
-    function attempt(action, retries, delayBeforeRetry) {
+    function attempt(action, ignoreError, retries, delayBeforeRetry) {
         if (typeof retries === "undefined") { retries = Utils.DefaultRetries; }
         if (typeof delayBeforeRetry === "undefined") { delayBeforeRetry = Utils.DefaultDelayBeforeRetry; }
         Ensure.argNotNull(action, "action");
         var currentTry = 1;
         var retryAction = function () {
             return action().then(Q.resolve, function (err) {
-                if(retries >= currentTry++) {
-                    return Q.delay(Q.fcall(retryAction), delayBeforeRetry);
+                if(ignoreError && err && err.code && err.code == ignoreError) {
+                    Q.resolve;
                 } else {
-                    return Q.reject(err);
+                    if(retries >= currentTry++) {
+                        return Q.delay(Q.fcall(retryAction), delayBeforeRetry);
+                    } else {
+                        return Q.reject(err);
+                    }
                 }
             });
         };
@@ -445,7 +449,7 @@ function deleteFile(file, manifest, rootPath, targetSubFolder, ignoreManifest, w
         if(!whatIf) {
             return Utils.attempt(function () {
                 return Q.nfcall(fs.unlink, path);
-            });
+            }, "ENOENT");
         }
     }
     return Q.resolve();
@@ -478,7 +482,7 @@ function deleteDirectoryRecursive(directory, manifest, rootPath, targetSubFolder
         if(!whatIf) {
             return Utils.attempt(function () {
                 return Q.nfcall(fs.rmdir, path);
-            });
+            }, "ENOENT");
         }
         return Q.resolve();
     });

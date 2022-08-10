@@ -15,7 +15,7 @@ suite('Attempt Function Tests', function () {
             attempts.should.equal(0);
             attempts++;
             return Q.resolve();
-        }, 3, 10).then(function () {
+        }, null, 3, 10).then(function () {
             attempts.should.equal(1);
             done();
         });
@@ -31,7 +31,7 @@ suite('Attempt Function Tests', function () {
             }
 
             return Q.resolve();
-        }, 3, 10).then(function () {
+        }, null, 3, 10).then(function () {
             attempts.should.equal(2);
             done();
         });
@@ -47,7 +47,7 @@ suite('Attempt Function Tests', function () {
             }
 
             return Q.resolve();
-        }, 3, 10).then(function () {
+        }, null, 3, 10).then(function () {
             attempts.should.equal(3);
             done();
         });
@@ -63,7 +63,7 @@ suite('Attempt Function Tests', function () {
             }
 
             return Q.resolve();
-        }, 3, 10).then(function () {
+        }, null, 3, 10).then(function () {
             attempts.should.equal(4);
             done();
         });
@@ -79,7 +79,7 @@ suite('Attempt Function Tests', function () {
             }
 
             return Q.resolve();
-        }, 3, 10).fail(function (err) {
+        }, null, 3, 10).fail(function (err) {
             err.should.be.ok;
             err.message.should.equal("error");
             attempts.should.equal(4);
