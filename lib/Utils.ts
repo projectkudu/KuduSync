@@ -4,7 +4,7 @@ module Utils {
     private DefaultRetries: number = 3;
     private DefaultDelayBeforeRetry: number = 250; // 250 ms
         
-    export function attempt(action: () => Promise, retries: number = DefaultRetries, delayBeforeRetry: number = DefaultDelayBeforeRetry)  : Promise {
+    export function attempt(action: () => Promise, ignoreError: string = "", retries: number = DefaultRetries, delayBeforeRetry: number = DefaultDelayBeforeRetry)  : Promise {
         Ensure.argNotNull(action, "action");
         var currentTry = 1;
         
@@ -12,7 +12,10 @@ module Utils {
             return action().then(
                 Q.resolve,
                 function(err?) {
-                    if (retries >= currentTry++) {
+                    if (ignoreError && err && err.code && err.code == ignoreError) {
+                        Q.resolve;
+                    }
+                    else if (retries >= currentTry++) {
                         return Q.delay(Q.fcall(retryAction), delayBeforeRetry);
                     }
                     else {
